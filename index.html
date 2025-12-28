@@ -3,316 +3,425 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AR Navigation Pro</title>
+    <title>AR Navigation Pro - Full Path</title>
     
-    <!-- A-FRAME y AR.JS -->
+    <!-- LIBRERÍAS A-FRAME y AR.JS -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script type='text/javascript' src='https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex-location-only.js'></script>
     <script type='text/javascript' src='https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js'></script>
+    <!-- Librería Look-at -->
+    <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
     <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; background-color: transparent !important; }
+        body, html { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; }
         
-        /* Controles UI Superiores */
+        /* UI SUPERIOR */
         #top-ui {
             position: absolute;
-            top: 10px;
-            left: 0;
-            width: 100%;
+            top: 0; left: 0; width: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
+            padding: 15px 0 25px 0;
             z-index: 999;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 10px;
-            pointer-events: auto;
         }
 
-        .row { display: flex; gap: 10px; justify-content: center; width: 90%; }
+        .row { display: flex; gap: 10px; justify-content: center; width: 95%; }
         
         input {
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            width: 70%;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            width: 65%;
             font-size: 16px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            outline: none;
         }
 
         select {
             padding: 10px;
-            border-radius: 5px;
+            border-radius: 8px;
+            border: none;
+            background: white;
+            font-weight: bold;
         }
 
-        /* Controles UI Inferiores */
+        /* HUD DE INSTRUCCIONES */
+        #instruction-panel {
+            position: absolute;
+            top: 90px;
+            left: 5%;
+            width: 90%;
+            background: rgba(20, 20, 20, 0.9);
+            color: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+            z-index: 998;
+            border-left: 6px solid #ffee00; /* Amarillo Taxi */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        #instruction-text { font-size: 1.3rem; font-weight: 800; text-transform: uppercase; }
+        #distance-text { font-size: 1rem; color: #ffee00; margin-top: 5px; font-weight: bold; }
+
+        /* UI INFERIOR */
         #bottom-ui {
             position: absolute;
-            bottom: 20px;
+            bottom: 30px;
             width: 100%;
-            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
             z-index: 999;
         }
 
-        button {
-            padding: 12px 24px;
-            background: #28a745;
-            color: white;
+        .btn {
             border: none;
             border-radius: 50px;
-            font-size: 18px;
-            font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             cursor: pointer;
+            transition: transform 0.1s;
+            font-weight: bold;
+        }
+        .btn:active { transform: scale(0.90); }
+        
+        .btn-start { 
+            padding: 15px 40px; 
+            font-size: 18px; 
+            background: linear-gradient(45deg, #28a745, #218838);
+        }
+        
+        .btn-voice { 
+            width: 60px; height: 60px; 
+            font-size: 24px; 
+            background: #333;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        button:active { transform: scale(0.95); }
-
-        #status-bar {
-            background: rgba(0, 0, 0, 0.7);
+        #gps-status {
+            font-size: 11px;
             color: #00ff00;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-            margin-bottom: 5px;
-            display: inline-block;
+            text-shadow: 1px 1px 2px black;
         }
 
-        /* Corrección pantalla blanca: forzar transparencia */
         a-scene { display: block; width: 100%; height: 100%; }
-        video { z-index: -1 !important; } /* Video al fondo */
     </style>
 </head>
 
 <body>
 
-    <!-- INTERFAZ DE USUARIO -->
+    <!-- INTERFAZ -->
     <div id="top-ui">
-        <!-- Fila 1: Idioma y Estado -->
-        <div class="row" style="justify-content: space-between;">
-            <div id="status-bar">GPS: Waiting...</div>
+        <div class="row" style="justify-content: space-between; align-items: center;">
+            <div id="gps-status">GPS: Esperando señal...</div>
             <select id="lang-select">
                 <option value="es">🇪🇸 Español</option>
                 <option value="en">🇺🇸 English</option>
             </select>
         </div>
-
-        <!-- Fila 2: Buscador -->
         <div class="row">
-            <input type="text" id="destination-input" placeholder="Ej: Starbucks, Parque...">
+            <input type="text" id="destination-input" placeholder="Buscar destino...">
         </div>
     </div>
 
-    <div id="bottom-ui">
-        <button id="btn-action">▶ Iniciar / Start</button>
-        <button id="btn-voice" style="background: #444;">🔊</button>
+    <!-- Panel HUD -->
+    <div id="instruction-panel">
+        <div id="instruction-text">--</div>
+        <div id="distance-text">-- m</div>
     </div>
 
-    <!-- ESCENA AR (Con corrección de transparencia) -->
+    <div id="bottom-ui">
+        <button id="btn-action" class="btn btn-start">IR / GO</button>
+        <button id="btn-voice" class="btn btn-voice">🔊</button>
+    </div>
+
+    <!-- ESCENA AR -->
     <a-scene
         vr-mode-ui="enabled: false"
         renderer="logarithmicDepthBuffer: true; alpha: true;" 
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; videoTexture: true;">
         
-        <a-camera gps-camera rotation-reader></a-camera>
+        <!-- Cámara GPS -->
+        <a-camera gps-camera="minDistance: 3; gpsMinDistance: 3;" rotation-reader></a-camera>
 
-        <!-- Contenedor de las flechas -->
+        <!-- Contenedor de ruta -->
         <a-entity id="route-container"></a-entity>
     </a-scene>
 
     <script>
-        /**
-         * CONFIGURACIÓN
-         */
+        // --- CONFIGURACIÓN ---
         const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
         
-        // Estado de la App
         let state = {
             lang: 'es',
-            voiceEnabled: true,
-            currentLoc: null, // [lon, lat]
-            isNavigating: false
+            voice: true,
+            loc: null, 
+            navigating: false,
+            steps: [] 
         };
 
-        // Textos / Traducciones
         const texts = {
             es: {
-                waitGps: "Esperando GPS...",
-                calculating: "Calculando ruta...",
-                notFound: "No se encontró el lugar. Intenta otro nombre.",
-                start: "Iniciar Ruta",
-                arrived: "Has llegado a tu destino.",
-                errorGps: "Error GPS: ",
-                voiceOn: "🔊",
-                voiceOff: "🔇",
+                wait: "Esperando GPS (Sal afuera)...",
+                calc: "Calculando ruta...",
+                error: "Lugar no encontrado.",
+                start: "INICIAR",
+                arrived: "¡Has llegado!",
+                voiceOn: "🔊", voiceOff: "🔇",
                 placeholder: "Buscar destino (ej: Oxxo)"
             },
             en: {
-                waitGps: "Waiting for GPS...",
-                calculating: "Calculating route...",
-                notFound: "Location not found. Try another name.",
-                start: "Start Route",
-                arrived: "You have arrived.",
-                errorGps: "GPS Error: ",
-                voiceOn: "🔊",
-                voiceOff: "🔇",
-                placeholder: "Search destination (e.g., Starbucks)"
+                wait: "Waiting for GPS...",
+                calc: "Calculating route...",
+                error: "Location not found.",
+                start: "START",
+                arrived: "You arrived!",
+                voiceOn: "🔊", voiceOff: "🔇",
+                placeholder: "Search destination..."
             }
         };
 
-        // DOM Elements
         const ui = {
-            status: document.getElementById('status-bar'),
+            status: document.getElementById('gps-status'),
             btnAction: document.getElementById('btn-action'),
             btnVoice: document.getElementById('btn-voice'),
             input: document.getElementById('destination-input'),
-            langSelect: document.getElementById('lang-select'),
-            scene: document.querySelector('a-scene')
+            lang: document.getElementById('lang-select'),
+            panel: document.getElementById('instruction-panel'),
+            instr: document.getElementById('instruction-text'),
+            dist: document.getElementById('distance-text'),
+            container: document.getElementById('route-container')
         };
 
-        /**
-         * 1. SISTEMA DE IDIOMA
-         */
-        ui.langSelect.addEventListener('change', (e) => {
+        // --- IDIOMA ---
+        ui.lang.addEventListener('change', (e) => {
             state.lang = e.target.value;
-            updateTexts();
+            ui.input.placeholder = texts[state.lang].placeholder;
+            ui.btnAction.innerText = texts[state.lang].start;
         });
 
-        function updateTexts() {
-            const t = texts[state.lang];
-            ui.input.placeholder = t.placeholder;
-            ui.btnAction.innerText = t.start;
-            if(!state.currentLoc) ui.status.innerText = t.waitGps;
-        }
-
-        /**
-         * 2. SISTEMA GPS
-         */
+        // --- GPS ---
         if (navigator.geolocation) {
-            const options = { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 };
-            
-            navigator.geolocation.watchPosition(
-                (pos) => {
-                    state.currentLoc = [pos.coords.longitude, pos.coords.latitude];
-                    ui.status.innerText = `GPS: ${state.currentLoc[1].toFixed(5)}, ${state.currentLoc[0].toFixed(5)}`;
-                    ui.status.style.color = '#00ff00'; // Verde = OK
-                },
-                (err) => {
-                    console.error(err);
-                    ui.status.innerText = texts[state.lang].errorGps + err.code;
-                    ui.status.style.color = 'red';
-                },
-                options
-            );
+            navigator.geolocation.watchPosition(pos => {
+                state.loc = [pos.coords.longitude, pos.coords.latitude];
+                ui.status.innerText = `GPS: ${state.loc[1].toFixed(5)}, ${state.loc[0].toFixed(5)}`;
+            }, err => {
+                ui.status.innerText = "Error GPS: " + err.message;
+            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
         } else {
-            alert("Geolocation not supported / GPS no soportado");
+            alert("Navegador no compatible.");
         }
 
-        /**
-         * 3. LÓGICA DE BÚSQUEDA Y RUTA
-         */
+        // --- LÓGICA PRINCIPAL ---
         ui.btnAction.addEventListener('click', async () => {
-            if (!state.currentLoc) {
-                alert(texts[state.lang].waitGps);
-                return;
-            }
-
+            if (!state.loc) { alert(texts[state.lang].wait); return; }
             const query = ui.input.value;
             if (!query) return;
 
-            speak(texts[state.lang].calculating);
+            speak(texts[state.lang].calc);
+            ui.btnAction.innerText = "⌛";
+
+            // 1. GEOCODING
+            const geoUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?proximity=${state.loc[0]},${state.loc[1]}&access_token=${MAPBOX_TOKEN}`;
             
-            // Paso A: Buscar Coordenadas del destino (Geocoding)
-            // Usamos 'proximity' para buscar lugares CERCA de tu ubicación GPS actual
-            const searchUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?proximity=${state.currentLoc[0]},${state.currentLoc[1]}&access_token=${MAPBOX_TOKEN}`;
-
             try {
-                const resGeo = await fetch(searchUrl);
-                const dataGeo = await resGeo.json();
-
-                if (!dataGeo.features || dataGeo.features.length === 0) {
-                    alert(texts[state.lang].notFound);
-                    speak(texts[state.lang].notFound);
+                const res = await fetch(geoUrl);
+                const data = await res.json();
+                if (!data.features || !data.features.length) {
+                    alert(texts[state.lang].error);
+                    ui.btnAction.innerText = texts[state.lang].start;
                     return;
                 }
+                const destCoords = data.features[0].center;
 
-                // Tomamos el primer resultado
-                const destinoCoords = dataGeo.features[0].center; // [lon, lat]
-                console.log("Destino encontrado:", dataGeo.features[0].place_name, destinoCoords);
-
-                // Paso B: Calcular Ruta caminando
-                obtenerRuta(state.currentLoc, destinoCoords);
+                // 2. OBTENER RUTA
+                getRoute(state.loc, destCoords);
 
             } catch (e) {
                 console.error(e);
-                alert("Error de conexión API");
+                alert("Error de conexión.");
             }
         });
 
-        async function obtenerRuta(start, end) {
-            const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
-            
+        async function getRoute(start, end) {
+            // Pedimos geometria completa (full) para tener todos los puntos del camino
+            const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
             const res = await fetch(url);
             const data = await res.json();
-
+            
             if (data.routes && data.routes[0]) {
                 const route = data.routes[0];
-                renderRoute(route.geometry.coordinates);
+                state.steps = route.legs[0].steps;
                 
-                // Mensaje inicial con distancia
-                const msg = state.lang === 'es' 
-                    ? `Destino a ${Math.round(route.distance)} metros.` 
-                    : `Destination is ${Math.round(route.distance)} meters away.`;
-                speak(msg);
+                ui.container.innerHTML = '';
+                
+                // --- DIBUJAR TODO EL CAMINO CON FLECHAS ---
+                drawContinuousPath(route.geometry.coordinates);
+                
+                // --- DIBUJAR PANELES DE GIRO ---
+                drawTurnSignals(state.steps);
 
-                // Iniciar monitor de pasos (simplificado)
-                monitorSteps(route.legs[0].steps);
+                ui.panel.style.display = 'block';
+                ui.btnAction.innerText = "🔄";
+                state.navigating = true;
+                
+                monitorProgress();
+                speak(`${texts[state.lang].start}. ${Math.round(route.distance)} meters.`);
             }
         }
 
-        function renderRoute(coords) {
-            const container = document.getElementById('route-container');
-            container.innerHTML = ''; 
+        // --- DIBUJO DE FLECHAS CONTINUAS ---
+        function drawContinuousPath(coords) {
+            // Recorremos las coordenadas. coords[i] es el punto actual, coords[i+1] es el siguiente
+            for (let i = 0; i < coords.length - 1; i++) {
+                
+                // Solo dibujamos una flecha cada 2 o 3 puntos para no saturar la RAM del celular
+                if (i % 2 !== 0) continue; 
 
-            // Dibujar flechas
-            coords.forEach((coord, i) => {
-                if (i % 2 !== 0) return; // Optimización: dibujar 1 de cada 2 puntos
+                const curr = coords[i];
+                const next = coords[i+1];
 
-                const el = document.createElement('a-entity');
-                el.setAttribute('gps-new-entity-place', `latitude: ${coord[1]}; longitude: ${coord[0]}`);
-                el.setAttribute('geometry', 'primitive: cone; radiusBottom: 0.2; height: 1'); // Cono más pequeño
-                el.setAttribute('material', 'color: yellow'); // Color amarillo más visible en calle
-                el.setAttribute('position', '0 0 0');
-                container.appendChild(el);
+                // Calculamos el ángulo hacia el siguiente punto
+                const angle = calculateBearing(curr[1], curr[0], next[1], next[0]);
+
+                // Entidad contenedora (Maneja la posición GPS)
+                const entity = document.createElement('a-entity');
+                entity.setAttribute('gps-new-entity-place', `latitude: ${curr[1]}; longitude: ${curr[0]}`);
+
+                // Flecha visual (Cono aplastado y rotado)
+                const arrow = document.createElement('a-cone');
+                arrow.setAttribute('radius-bottom', '0.2');  // Parte trasera ancha
+                arrow.setAttribute('radius-top', '0.01');    // Punta fina
+                arrow.setAttribute('height', '0.8');         // Largo de la flecha
+                arrow.setAttribute('material', 'color: #ffee00; opacity: 0.9;'); // Amarillo brillante
+                
+                // ROTACIÓN CLAVE:
+                // 1. "rotation" en el eje Y (vertical) usa el ángulo calculado (bearing)
+                // 2. "rotation" en eje X (90) es para acostar el cono en el suelo
+                // Pero en A-Frame anidado es mejor rotar el hijo.
+                
+                // Ajuste de rotación manual para alinear con el Norte geográfico
+                // Nota: A veces AR.js requiere ajuste, pero matemáticamente:
+                entity.setAttribute('rotation', `0 ${angle} 0`); // Rota hacia el destino
+                arrow.setAttribute('rotation', '-90 0 0'); // Acuesta el cono en el suelo
+                arrow.setAttribute('position', '0 -1.5 0'); // A nivel del suelo (aprox)
+
+                entity.appendChild(arrow);
+                ui.container.appendChild(entity);
+            }
+        }
+
+        // --- MATEMÁTICAS: CALCULAR RUMBO (BEARING) ---
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const toRad = (deg) => deg * Math.PI / 180;
+            const toDeg = (rad) => rad * 180 / Math.PI;
+
+            const φ1 = toRad(lat1);
+            const φ2 = toRad(lat2);
+            const Δλ = toRad(lon2 - lon1);
+
+            const y = Math.sin(Δλ) * Math.cos(φ2);
+            const x = Math.cos(φ1) * Math.sin(φ2) -
+                      Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+            
+            let θ = Math.atan2(y, x);
+            let bearing = (toDeg(θ) + 360) % 360;
+            
+            // Ajuste para A-Frame (El norte en 3D a veces varía según la librería)
+            // Generalmente AR.js alinea -Z con el Norte.
+            return -bearing; 
+        }
+
+        // --- DIBUJO DE SEÑALES DE GIRO (HUD FLOTANTE) ---
+        function drawTurnSignals(steps) {
+            steps.forEach(step => {
+                const lat = step.maneuver.location[1];
+                const lon = step.maneuver.location[0];
+                const instr = step.maneuver.instruction;
+
+                // Solo dibujamos señal si es un giro importante
+                if (step.maneuver.type === 'turn' || step.maneuver.type === 'arrive') {
+                    const entity = document.createElement('a-entity');
+                    entity.setAttribute('gps-new-entity-place', `latitude: ${lat}; longitude: ${lon}`);
+
+                    // Texto Flotante Grande
+                    const text = document.createElement('a-text');
+                    text.setAttribute('value', instr);
+                    text.setAttribute('color', '#fff');
+                    text.setAttribute('align', 'center');
+                    text.setAttribute('scale', '4 4 4');
+                    text.setAttribute('position', '0 3 0'); // Muy alto para ver de lejos
+                    text.setAttribute('look-at', '[gps-camera]'); // Siempre mira al usuario
+                    text.setAttribute('background', 'color: black; opacity: 0.6');
+
+                    // Poste Indicador (Cilindro vertical)
+                    const post = document.createElement('a-cylinder');
+                    post.setAttribute('height', '3');
+                    post.setAttribute('radius', '0.1');
+                    post.setAttribute('color', 'white');
+                    post.setAttribute('position', '0 1.5 0');
+
+                    entity.appendChild(post);
+                    entity.appendChild(text);
+                    ui.container.appendChild(entity);
+                }
             });
         }
 
-        function monitorSteps(steps) {
-            // Lógica simple para leer la primera instrucción
-            if(steps.length > 0) {
-                speak(steps[0].maneuver.instruction);
-            }
+        // --- MONITORIZAR PROGRESO ---
+        function monitorProgress() {
+            if (!state.navigating) return;
+            const check = setInterval(() => {
+                if (!state.steps.length) { clearInterval(check); return; }
+                
+                const nextStep = state.steps[0];
+                const stepLoc = nextStep.maneuver.location;
+                const dist = getDistance(state.loc[1], state.loc[0], stepLoc[1], stepLoc[0]);
+                
+                ui.instr.innerText = nextStep.maneuver.instruction;
+                ui.dist.innerText = Math.round(dist) + " m";
+
+                if (dist < 10) {
+                    speak(nextStep.maneuver.instruction);
+                    state.steps.shift();
+                    if (state.steps.length === 0) {
+                        ui.instr.innerText = texts[state.lang].arrived;
+                        speak(texts[state.lang].arrived);
+                        state.navigating = false;
+                    }
+                }
+            }, 2500);
         }
 
-        /**
-         * 4. SISTEMA DE VOZ
-         */
+        // Haversine
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; 
+            const dLat = (lat2-lat1) * Math.PI/180;
+            const dLon = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
         ui.btnVoice.addEventListener('click', () => {
-            state.voiceEnabled = !state.voiceEnabled;
-            ui.btnVoice.innerText = state.voiceEnabled ? texts[state.lang].voiceOn : texts[state.lang].voiceOff;
-            if(!state.voiceEnabled) window.speechSynthesis.cancel();
+            state.voice = !state.voice;
+            ui.btnVoice.innerText = state.voice ? texts[state.lang].voiceOn : texts[state.lang].voiceOff;
+            if(!state.voice) window.speechSynthesis.cancel();
         });
 
-        function speak(text) {
-            if (!state.voiceEnabled) return;
-            window.speechSynthesis.cancel(); // Detener voz anterior
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = state.lang === 'es' ? 'es-MX' : 'en-US'; // Español Latam o Ingles US
-            window.speechSynthesis.speak(utterance);
+        function speak(txt) {
+            if (!state.voice) return;
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(txt);
+            u.lang = state.lang === 'es' ? 'es-MX' : 'en-US';
+            window.speechSynthesis.speak(u);
         }
-
-        // Inicializar textos
-        updateTexts();
-
     </script>
 </body>
 </html>
