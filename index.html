@@ -3,108 +3,118 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AR Navigation Pro - Full Path</title>
+    <title>AR Navigation Pro - Map Picker</title>
     
     <!-- LIBRERÍAS A-FRAME y AR.JS -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script type='text/javascript' src='https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex-location-only.js'></script>
     <script type='text/javascript' src='https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js'></script>
-    <!-- Librería Look-at -->
     <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
+    <!-- MAPBOX GL JS (MAPA INTERACTIVO) -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+
     <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; }
+        body, html { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; height: 100%; }
         
-        /* UI SUPERIOR */
-        #top-ui {
+        /* Contenedores de vistas */
+        #ar-view, #map-view {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+        }
+        #map-view { display: none; background-color: #eee; } /* Inicialmente oculto */
+
+        /* UI SUPERIOR (Compartido entre vistas o adaptado) */
+        .ui-container-top {
             position: absolute;
             top: 0; left: 0; width: 100%;
             background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
-            padding: 15px 0 25px 0;
+            padding: 15px 0 10px 0;
             z-index: 999;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 10px;
         }
-
         .row { display: flex; gap: 10px; justify-content: center; width: 95%; }
-        
         input {
-            padding: 12px;
-            border-radius: 8px;
-            border: none;
-            width: 65%;
-            font-size: 16px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            outline: none;
+            padding: 12px; border-radius: 8px; border: none; width: 65%; font-size: 16px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3); outline: none;
         }
-
         select {
-            padding: 10px;
-            border-radius: 8px;
-            border: none;
-            background: white;
-            font-weight: bold;
+            padding: 10px; border-radius: 8px; border: none; background: white; font-weight: bold;
+        }
+        #gps-status {
+            font-size: 11px; color: #00ff00; text-shadow: 1px 1px 2px black;
         }
 
-        /* HUD DE INSTRUCCIONES */
+        /* HUD DE INSTRUCCIONES (Solo en vista AR) */
         #instruction-panel {
             position: absolute;
-            top: 90px;
-            left: 5%;
-            width: 90%;
+            top: 100px; /* Ajustado por la UI superior más grande */
+            left: 5%; width: 90%;
             background: rgba(20, 20, 20, 0.9);
-            color: #fff;
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-            display: none;
-            z-index: 998;
-            border-left: 6px solid #ffee00; /* Amarillo Taxi */
+            color: #fff; padding: 15px; border-radius: 12px; text-align: center;
+            display: none; z-index: 998; border-left: 6px solid #ffee00;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         #instruction-text { font-size: 1.3rem; font-weight: 800; text-transform: uppercase; }
         #distance-text { font-size: 1rem; color: #ffee00; margin-top: 5px; font-weight: bold; }
 
-        /* UI INFERIOR */
-        #bottom-ui {
+        /* UI INFERIOR (Compartido entre vistas o adaptado) */
+        .ui-container-bottom {
             position: absolute;
-            bottom: 30px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
+            bottom: 30px; width: 100%;
+            display: flex; justify-content: center; gap: 20px;
             z-index: 999;
         }
-
         .btn {
-            border: none;
-            border-radius: 50px;
-            color: white;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            cursor: pointer;
-            transition: transform 0.1s;
-            font-weight: bold;
+            border: none; border-radius: 50px; color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer;
+            transition: transform 0.1s; font-weight: bold;
         }
         .btn:active { transform: scale(0.90); }
-        
-        .btn-start { 
-            padding: 15px 40px; 
-            font-size: 18px; 
+        .btn-main { 
+            padding: 15px 40px; font-size: 18px; 
             background: linear-gradient(45deg, #28a745, #218838);
         }
-        
         .btn-voice { 
-            width: 60px; height: 60px; 
-            font-size: 24px; 
-            background: #333;
-            display: flex; align-items: center; justify-content: center;
+            width: 60px; height: 60px; font-size: 24px; 
+            background: #333; display: flex; align-items: center; justify-content: center;
         }
 
-        #gps-status {
-            font-size: 11px;
-            color: #00ff00;
+        /* ESTILOS ESPECÍFICOS DEL MAPA */
+        #map {
+            position: absolute;
+            top: 0; bottom: 0; width: 100%;
+        }
+        #map-controls {
+            position: absolute;
+            top: 10px; left: 0; width: 100%;
+            z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            padding: 10px 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+        }
+        #map-actions {
+            position: absolute;
+            bottom: 20px; width: 100%;
+            z-index: 1000;
+            display: flex; justify-content: center; gap: 10px;
+        }
+        #map-actions .btn {
+            background-color: #007bff; /* Azul Mapbox */
+            padding: 12px 25px;
+            font-size: 16px;
+        }
+        #map-actions .btn.disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        #map-selector-label {
+            color: white; font-weight: bold; font-size: 1.1em;
             text-shadow: 1px 1px 2px black;
         }
 
@@ -114,142 +124,364 @@
 
 <body>
 
-    <!-- INTERFAZ -->
-    <div id="top-ui">
-        <div class="row" style="justify-content: space-between; align-items: center;">
-            <div id="gps-status">GPS: Esperando señal...</div>
-            <select id="lang-select">
-                <option value="es">🇪🇸 Español</option>
-                <option value="en">🇺🇸 English</option>
-            </select>
+    <!-- VISTA AR -->
+    <div id="ar-view">
+        <div class="ui-container-top">
+            <div class="row" style="justify-content: space-between; align-items: center;">
+                <div id="gps-status">GPS: Esperando señal...</div>
+                <select id="lang-select-ar">
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="en">🇺🇸 English</option>
+                </select>
+            </div>
         </div>
-        <div class="row">
-            <input type="text" id="destination-input" placeholder="Buscar destino...">
+
+        <div id="instruction-panel">
+            <div id="instruction-text">--</div>
+            <div id="distance-text">-- m</div>
+        </div>
+
+        <div class="ui-container-bottom">
+            <button id="btn-open-map" class="btn btn-main">🗺️ Seleccionar Ruta</button>
+            <button id="btn-voice-ar" class="btn btn-voice">🔊</button>
+        </div>
+
+        <a-scene
+            vr-mode-ui="enabled: false"
+            renderer="logarithmicDepthBuffer: true; alpha: true;" 
+            embedded
+            arjs="sourceType: webcam; debugUIEnabled: false; videoTexture: true;">
+            
+            <a-camera gps-camera="minDistance: 3; gpsMinDistance: 3;" rotation-reader></a-camera>
+            <a-entity id="route-container"></a-entity>
+        </a-scene>
+    </div>
+
+    <!-- VISTA MAPA -->
+    <div id="map-view">
+        <div id="map"></div>
+        <div id="map-controls">
+            <div class="row">
+                <input type="text" id="start-input" placeholder="Ubicación de inicio (ej: Mi casa)">
+                <button id="btn-use-current-loc" class="btn" style="background-color: #6f42c1; padding: 10px 15px;">📍 Mi GPS</button>
+            </div>
+            <div class="row">
+                <input type="text" id="destination-input-map" placeholder="Ubicación de destino (ej: Oxxo)">
+            </div>
+            <div class="row" style="margin-top: 10px;">
+                <div id="map-selector-label">Haga clic en el mapa para seleccionar</div>
+            </div>
+        </div>
+
+        <div id="map-actions">
+            <button id="btn-set-start" class="btn">Establecer Inicio</button>
+            <button id="btn-set-destination" class="btn">Establecer Destino</button>
+            <button id="btn-confirm-route" class="btn disabled">Confirmar Ruta</button>
+            <button id="btn-back-to-ar" class="btn" style="background-color: #dc3545;">Volver</button>
         </div>
     </div>
-
-    <!-- Panel HUD -->
-    <div id="instruction-panel">
-        <div id="instruction-text">--</div>
-        <div id="distance-text">-- m</div>
-    </div>
-
-    <div id="bottom-ui">
-        <button id="btn-action" class="btn btn-start">IR / GO</button>
-        <button id="btn-voice" class="btn btn-voice">🔊</button>
-    </div>
-
-    <!-- ESCENA AR -->
-    <a-scene
-        vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; alpha: true;" 
-        embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; videoTexture: true;">
-        
-        <!-- Cámara GPS -->
-        <a-camera gps-camera="minDistance: 3; gpsMinDistance: 3;" rotation-reader></a-camera>
-
-        <!-- Contenedor de ruta -->
-        <a-entity id="route-container"></a-entity>
-    </a-scene>
 
     <script>
         // --- CONFIGURACIÓN ---
         const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
+        mapboxgl.accessToken = MAPBOX_TOKEN; // ¡Importante para Mapbox GL JS!
         
         let state = {
             lang: 'es',
             voice: true,
-            loc: null, 
+            currentGpsLoc: null, // [lon, lat] del GPS del dispositivo
+            startCoords: null,   // [lon, lat] seleccionado en el mapa
+            destCoords: null,    // [lon, lat] seleccionado en el mapa
+            startAddress: '',
+            destAddress: '',
             navigating: false,
-            steps: [] 
+            steps: [],
+            mapViewActive: false,
+            mapMode: 'none' // 'none', 'selecting-start', 'selecting-dest'
         };
 
         const texts = {
             es: {
                 wait: "Esperando GPS (Sal afuera)...",
                 calc: "Calculando ruta...",
-                error: "Lugar no encontrado.",
-                start: "INICIAR",
+                errorGeo: "Lugar no encontrado.",
+                startNav: "INICIAR",
                 arrived: "¡Has llegado!",
                 voiceOn: "🔊", voiceOff: "🔇",
-                placeholder: "Buscar destino (ej: Oxxo)"
+                placeholderStart: "Ubicación de inicio (ej: Mi casa)",
+                placeholderDest: "Ubicación de destino (ej: Oxxo)",
+                openMap: "🗺️ Seleccionar Ruta",
+                useCurrentLoc: "📍 Mi GPS",
+                setStart: "Establecer Inicio",
+                setDest: "Establecer Destino",
+                confirmRoute: "Confirmar Ruta",
+                back: "Volver",
+                selectStartMap: "Haga clic en el mapa para seleccionar el INICIO",
+                selectDestMap: "Haga clic en el mapa para seleccionar el DESTINO",
+                mapInstruction: "Haga clic en el mapa o escriba la dirección"
             },
             en: {
                 wait: "Waiting for GPS...",
                 calc: "Calculating route...",
-                error: "Location not found.",
-                start: "START",
+                errorGeo: "Location not found.",
+                startNav: "START",
                 arrived: "You arrived!",
                 voiceOn: "🔊", voiceOff: "🔇",
-                placeholder: "Search destination..."
+                placeholderStart: "Start location (e.g., My home)",
+                placeholderDest: "Destination (e.g., Starbucks)",
+                openMap: "🗺️ Select Route",
+                useCurrentLoc: "📍 My GPS",
+                setStart: "Set Start",
+                setDest: "Set Destination",
+                confirmRoute: "Confirm Route",
+                back: "Back",
+                selectStartMap: "Click on map to select START",
+                selectDestMap: "Click on map to select DESTINATION",
+                mapInstruction: "Click on map or type address"
             }
         };
 
         const ui = {
-            status: document.getElementById('gps-status'),
-            btnAction: document.getElementById('btn-action'),
-            btnVoice: document.getElementById('btn-voice'),
-            input: document.getElementById('destination-input'),
-            lang: document.getElementById('lang-select'),
-            panel: document.getElementById('instruction-panel'),
-            instr: document.getElementById('instruction-text'),
-            dist: document.getElementById('distance-text'),
-            container: document.getElementById('route-container')
+            // AR View
+            arView: document.getElementById('ar-view'),
+            gpsStatus: document.getElementById('gps-status'),
+            langSelectAr: document.getElementById('lang-select-ar'),
+            instructionPanel: document.getElementById('instruction-panel'),
+            instructionText: document.getElementById('instruction-text'),
+            distanceText: document.getElementById('distance-text'),
+            btnOpenMap: document.getElementById('btn-open-map'),
+            btnVoiceAr: document.getElementById('btn-voice-ar'),
+            routeContainer: document.getElementById('route-container'),
+
+            // Map View
+            mapView: document.getElementById('map-view'),
+            mapDiv: document.getElementById('map'),
+            startInput: document.getElementById('start-input'),
+            destinationInputMap: document.getElementById('destination-input-map'),
+            btnUseCurrentLoc: document.getElementById('btn-use-current-loc'),
+            btnSetStart: document.getElementById('btn-set-start'),
+            btnSetDestination: document.getElementById('btn-set-destination'),
+            btnConfirmRoute: document.getElementById('btn-confirm-route'),
+            btnBackToAr: document.getElementById('btn-back-to-ar'),
+            mapSelectorLabel: document.getElementById('map-selector-label')
         };
 
+        // --- MAPBOX MAP INSTANCE & MARKERS ---
+        let map;
+        let startMarker;
+        let destMarker;
+
+        function initMap() {
+            map = new mapboxgl.Map({
+                container: ui.mapDiv,
+                style: 'mapbox://styles/mapbox/streets-v11',
+                center: [-109.72148, 23.10468], // Default center (Mexico/Baja California)
+                zoom: 12
+            });
+
+            map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+
+            startMarker = new mapboxgl.Marker({ color: 'red', draggable: true })
+                .setLngLat([0,0]) // default to 0,0
+                .addTo(map)
+                .on('dragend', onMarkerDragEnd.bind(null, 'start'));
+
+            destMarker = new mapboxgl.Marker({ color: 'blue', draggable: true })
+                .setLngLat([0,0])
+                .addTo(map)
+                .on('dragend', onMarkerDragEnd.bind(null, 'dest'));
+            
+            // Ocultar marcadores inicialmente
+            startMarker.getElement().style.display = 'none';
+            destMarker.getElement().style.display = 'none';
+
+
+            map.on('click', onMapClick);
+        }
+
+        async function onMarkerDragEnd(type) {
+            const marker = (type === 'start') ? startMarker : destMarker;
+            const lngLat = marker.getLngLat();
+            const coords = [lngLat.lng, lngLat.lat];
+            await reverseGeocode(coords, type);
+            updateMapUI();
+        }
+
+        async function onMapClick(e) {
+            const coords = [e.lngLat.lng, e.lngLat.lat];
+            if (state.mapMode === 'selecting-start') {
+                state.startCoords = coords;
+                startMarker.setLngLat(coords).getElement().style.display = 'block';
+                await reverseGeocode(coords, 'start');
+                state.mapMode = 'none';
+            } else if (state.mapMode === 'selecting-dest') {
+                state.destCoords = coords;
+                destMarker.setLngLat(coords).getElement().style.display = 'block';
+                await reverseGeocode(coords, 'dest');
+                state.mapMode = 'none';
+            }
+            updateMapUI();
+        }
+
+        // --- GEOCODING (Dirección -> Coordenadas) ---
+        async function geocodeAddress(query, type) {
+            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.features && data.features.length) {
+                const coords = data.features[0].center; // [lon, lat]
+                if (type === 'start') {
+                    state.startCoords = coords;
+                    state.startAddress = data.features[0].place_name;
+                    startMarker.setLngLat(coords).getElement().style.display = 'block';
+                } else {
+                    state.destCoords = coords;
+                    state.destAddress = data.features[0].place_name;
+                    destMarker.setLngLat(coords).getElement().style.display = 'block';
+                }
+                map.flyTo({ center: coords, zoom: 14 });
+            } else {
+                alert(texts[state.lang].errorGeo);
+            }
+            updateMapUI();
+        }
+
+        // --- REVERSE GEOCODING (Coordenadas -> Dirección) ---
+        async function reverseGeocode(coords, type) {
+            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${coords[0]},${coords[1]}.json?access_token=${MAPBOX_TOKEN}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.features && data.features.length) {
+                if (type === 'start') {
+                    state.startAddress = data.features[0].place_name;
+                    ui.startInput.value = state.startAddress;
+                } else {
+                    state.destAddress = data.features[0].place_name;
+                    ui.destinationInputMap.value = state.destAddress;
+                }
+            } else {
+                if (type === 'start') ui.startInput.value = `(${coords[1].toFixed(4)}, ${coords[0].toFixed(4)})`;
+                else ui.destinationInputMap.value = `(${coords[1].toFixed(4)}, ${coords[0].toFixed(4)})`;
+            }
+        }
+
         // --- IDIOMA ---
-        ui.lang.addEventListener('change', (e) => {
+        ui.langSelectAr.addEventListener('change', (e) => {
             state.lang = e.target.value;
-            ui.input.placeholder = texts[state.lang].placeholder;
-            ui.btnAction.innerText = texts[state.lang].start;
+            updateUI();
         });
 
-        // --- GPS ---
+        function updateTexts() {
+            const t = texts[state.lang];
+            ui.btnOpenMap.innerText = t.openMap;
+            ui.btnVoiceAr.innerText = state.voice ? t.voiceOn : t.voiceOff;
+            ui.startInput.placeholder = t.placeholderStart;
+            ui.destinationInputMap.placeholder = t.placeholderDest;
+            ui.btnUseCurrentLoc.innerText = t.useCurrentLoc;
+            ui.btnSetStart.innerText = t.setStart;
+            ui.btnSetDestination.innerText = t.setDest;
+            ui.btnConfirmRoute.innerText = t.confirmRoute;
+            ui.btnBackToAr.innerText = t.back;
+            ui.mapSelectorLabel.innerText = t.mapInstruction;
+        }
+
+        // --- GESTIÓN DE VISTAS (AR vs MAPA) y UI ---
+        function updateUI() {
+            updateTexts(); // Actualizar textos por idioma
+
+            ui.arView.style.display = state.mapViewActive ? 'none' : 'block';
+            ui.mapView.style.display = state.mapViewActive ? 'block' : 'none';
+
+            if (state.mapViewActive) {
+                map.resize(); // Refrescar mapa si se redimensiona
+                // Actualizar label de instrucción del mapa
+                if (state.mapMode === 'selecting-start') ui.mapSelectorLabel.innerText = texts[state.lang].selectStartMap;
+                else if (state.mapMode === 'selecting-dest') ui.mapSelectorLabel.innerText = texts[state.lang].selectDestMap;
+                else ui.mapSelectorLabel.innerText = texts[state.lang].mapInstruction;
+
+                // Habilitar/deshabilitar botón Confirmar Ruta
+                ui.btnConfirmRoute.classList.toggle('disabled', !(state.startCoords && state.destCoords));
+            } else {
+                // En vista AR, actualizar estado de voz
+                ui.btnVoiceAr.innerText = state.voice ? texts[state.lang].voiceOn : texts[state.lang].voiceOff;
+                // Si ya hay una ruta, el botón principal en AR debería ser "Reiniciar" o similar
+                if (state.navigating) {
+                    ui.btnOpenMap.innerText = "🔄 " + texts[state.lang].startNav; // O un texto de reiniciar
+                    ui.instructionPanel.style.display = 'block';
+                } else {
+                    ui.btnOpenMap.innerText = texts[state.lang].openMap;
+                    ui.instructionPanel.style.display = 'none';
+                }
+            }
+        }
+
+        // --- GPS (General para el dispositivo) ---
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(pos => {
-                state.loc = [pos.coords.longitude, pos.coords.latitude];
-                ui.status.innerText = `GPS: ${state.loc[1].toFixed(5)}, ${state.loc[0].toFixed(5)}`;
+                state.currentGpsLoc = [pos.coords.longitude, pos.coords.latitude];
+                ui.gpsStatus.innerText = `GPS: ${state.currentGpsLoc[1].toFixed(5)}, ${state.currentGpsLoc[0].toFixed(5)}`;
+                ui.gpsStatus.style.color = '#00ff00';
+
+                // Centrar mapa si es la primera vez que se obtiene el GPS
+                if (!map.isMoving() && !startMarker.getElement().style.display && !destMarker.getElement().style.display) {
+                    map.flyTo({ center: state.currentGpsLoc, zoom: 14 });
+                }
             }, err => {
-                ui.status.innerText = "Error GPS: " + err.message;
+                ui.gpsStatus.innerText = "Error GPS: " + err.message;
+                ui.gpsStatus.style.color = 'red';
             }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
         } else {
             alert("Navegador no compatible.");
         }
 
-        // --- LÓGICA PRINCIPAL ---
-        ui.btnAction.addEventListener('click', async () => {
-            if (!state.loc) { alert(texts[state.lang].wait); return; }
-            const query = ui.input.value;
-            if (!query) return;
+        // --- EVENT LISTENERS MAPA ---
+        ui.btnOpenMap.addEventListener('click', () => {
+            state.mapViewActive = true;
+            if (!map) initMap(); // Inicializar mapa la primera vez que se abre
+            updateUI();
+        });
+        ui.btnBackToAr.addEventListener('click', () => {
+            state.mapViewActive = false;
+            updateUI();
+        });
 
-            speak(texts[state.lang].calc);
-            ui.btnAction.innerText = "⌛";
+        ui.startInput.addEventListener('change', () => geocodeAddress(ui.startInput.value, 'start'));
+        ui.destinationInputMap.addEventListener('change', () => geocodeAddress(ui.destinationInputMap.value, 'dest'));
 
-            // 1. GEOCODING
-            const geoUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?proximity=${state.loc[0]},${state.loc[1]}&access_token=${MAPBOX_TOKEN}`;
-            
-            try {
-                const res = await fetch(geoUrl);
-                const data = await res.json();
-                if (!data.features || !data.features.length) {
-                    alert(texts[state.lang].error);
-                    ui.btnAction.innerText = texts[state.lang].start;
-                    return;
-                }
-                const destCoords = data.features[0].center;
+        ui.btnUseCurrentLoc.addEventListener('click', async () => {
+            if (!state.currentGpsLoc) { alert(texts[state.lang].wait); return; }
+            state.startCoords = state.currentGpsLoc;
+            startMarker.setLngLat(state.currentGpsLoc).getElement().style.display = 'block';
+            await reverseGeocode(state.currentGpsLoc, 'start');
+            map.flyTo({ center: state.currentGpsLoc, zoom: 15 });
+            updateMapUI();
+        });
 
-                // 2. OBTENER RUTA
-                getRoute(state.loc, destCoords);
+        ui.btnSetStart.addEventListener('click', () => {
+            state.mapMode = 'selecting-start';
+            updateMapUI();
+            ui.mapSelectorLabel.innerText = texts[state.lang].selectStartMap;
+        });
+        ui.btnSetDestination.addEventListener('click', () => {
+            state.mapMode = 'selecting-dest';
+            updateMapUI();
+            ui.mapSelectorLabel.innerText = texts[state.lang].selectDestMap;
+        });
 
-            } catch (e) {
-                console.error(e);
-                alert("Error de conexión.");
+        ui.btnConfirmRoute.addEventListener('click', () => {
+            if (state.startCoords && state.destCoords) {
+                getRoute(state.startCoords, state.destCoords);
+                state.mapViewActive = false; // Volver a vista AR
+                state.navigating = true;
+                updateUI();
+            } else {
+                alert(texts[state.lang].mapInstruction); // Pedir seleccionar ambos
             }
         });
 
+
+        // --- OBTENER RUTA (DESDE MAPBOX) ---
         async function getRoute(start, end) {
-            // Pedimos geometria completa (full) para tener todos los puntos del camino
             const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
             const res = await fetch(url);
             const data = await res.json();
@@ -258,61 +490,47 @@
                 const route = data.routes[0];
                 state.steps = route.legs[0].steps;
                 
-                ui.container.innerHTML = '';
+                ui.routeContainer.innerHTML = ''; // Limpiar AR antiguo
                 
-                // --- DIBUJAR TODO EL CAMINO CON FLECHAS ---
                 drawContinuousPath(route.geometry.coordinates);
-                
-                // --- DIBUJAR PANELES DE GIRO ---
                 drawTurnSignals(state.steps);
 
-                ui.panel.style.display = 'block';
-                ui.btnAction.innerText = "🔄";
-                state.navigating = true;
+                ui.instructionPanel.style.display = 'block';
                 
                 monitorProgress();
-                speak(`${texts[state.lang].start}. ${Math.round(route.distance)} meters.`);
+                speak(`${texts[state.lang].startNav}. ${Math.round(route.distance)} meters.`);
+            } else {
+                alert(texts[state.lang].errorGeo);
+                state.navigating = false;
+                updateUI();
             }
         }
 
         // --- DIBUJO DE FLECHAS CONTINUAS ---
         function drawContinuousPath(coords) {
-            // Recorremos las coordenadas. coords[i] es el punto actual, coords[i+1] es el siguiente
             for (let i = 0; i < coords.length - 1; i++) {
-                
-                // Solo dibujamos una flecha cada 2 o 3 puntos para no saturar la RAM del celular
                 if (i % 2 !== 0) continue; 
 
                 const curr = coords[i];
                 const next = coords[i+1];
 
-                // Calculamos el ángulo hacia el siguiente punto
                 const angle = calculateBearing(curr[1], curr[0], next[1], next[0]);
 
-                // Entidad contenedora (Maneja la posición GPS)
                 const entity = document.createElement('a-entity');
                 entity.setAttribute('gps-new-entity-place', `latitude: ${curr[1]}; longitude: ${curr[0]}`);
 
-                // Flecha visual (Cono aplastado y rotado)
                 const arrow = document.createElement('a-cone');
-                arrow.setAttribute('radius-bottom', '0.2');  // Parte trasera ancha
-                arrow.setAttribute('radius-top', '0.01');    // Punta fina
-                arrow.setAttribute('height', '0.8');         // Largo de la flecha
-                arrow.setAttribute('material', 'color: #ffee00; opacity: 0.9;'); // Amarillo brillante
+                arrow.setAttribute('radius-bottom', '0.2');  
+                arrow.setAttribute('radius-top', '0.01');    
+                arrow.setAttribute('height', '0.8');         
+                arrow.setAttribute('material', 'color: #ffee00; opacity: 0.9;'); 
                 
-                // ROTACIÓN CLAVE:
-                // 1. "rotation" en el eje Y (vertical) usa el ángulo calculado (bearing)
-                // 2. "rotation" en eje X (90) es para acostar el cono en el suelo
-                // Pero en A-Frame anidado es mejor rotar el hijo.
-                
-                // Ajuste de rotación manual para alinear con el Norte geográfico
-                // Nota: A veces AR.js requiere ajuste, pero matemáticamente:
-                entity.setAttribute('rotation', `0 ${angle} 0`); // Rota hacia el destino
-                arrow.setAttribute('rotation', '-90 0 0'); // Acuesta el cono en el suelo
-                arrow.setAttribute('position', '0 -1.5 0'); // A nivel del suelo (aprox)
+                entity.setAttribute('rotation', `0 ${angle} 0`); 
+                arrow.setAttribute('rotation', '-90 0 0'); 
+                arrow.setAttribute('position', '0 -1.5 0'); 
 
                 entity.appendChild(arrow);
-                ui.container.appendChild(entity);
+                ui.routeContainer.appendChild(entity);
             }
         }
 
@@ -332,8 +550,6 @@
             let θ = Math.atan2(y, x);
             let bearing = (toDeg(θ) + 360) % 360;
             
-            // Ajuste para A-Frame (El norte en 3D a veces varía según la librería)
-            // Generalmente AR.js alinea -Z con el Norte.
             return -bearing; 
         }
 
@@ -344,22 +560,19 @@
                 const lon = step.maneuver.location[0];
                 const instr = step.maneuver.instruction;
 
-                // Solo dibujamos señal si es un giro importante
                 if (step.maneuver.type === 'turn' || step.maneuver.type === 'arrive') {
                     const entity = document.createElement('a-entity');
                     entity.setAttribute('gps-new-entity-place', `latitude: ${lat}; longitude: ${lon}`);
 
-                    // Texto Flotante Grande
                     const text = document.createElement('a-text');
                     text.setAttribute('value', instr);
                     text.setAttribute('color', '#fff');
                     text.setAttribute('align', 'center');
                     text.setAttribute('scale', '4 4 4');
-                    text.setAttribute('position', '0 3 0'); // Muy alto para ver de lejos
-                    text.setAttribute('look-at', '[gps-camera]'); // Siempre mira al usuario
+                    text.setAttribute('position', '0 3 0'); 
+                    text.setAttribute('look-at', '[gps-camera]'); 
                     text.setAttribute('background', 'color: black; opacity: 0.6');
 
-                    // Poste Indicador (Cilindro vertical)
                     const post = document.createElement('a-cylinder');
                     post.setAttribute('height', '3');
                     post.setAttribute('radius', '0.1');
@@ -368,31 +581,38 @@
 
                     entity.appendChild(post);
                     entity.appendChild(text);
-                    ui.container.appendChild(entity);
+                    ui.routeContainer.appendChild(entity);
                 }
             });
         }
 
         // --- MONITORIZAR PROGRESO ---
         function monitorProgress() {
-            if (!state.navigating) return;
+            if (!state.navigating || !state.currentGpsLoc) return; // Asegúrate de tener GPS y estar navegando
+
             const check = setInterval(() => {
-                if (!state.steps.length) { clearInterval(check); return; }
+                if (!state.navigating || !state.steps.length) { 
+                    clearInterval(check); 
+                    if (!state.navigating) ui.instructionPanel.style.display = 'none'; // Ocultar panel si no navega
+                    return; 
+                }
                 
                 const nextStep = state.steps[0];
                 const stepLoc = nextStep.maneuver.location;
-                const dist = getDistance(state.loc[1], state.loc[0], stepLoc[1], stepLoc[0]);
+                const dist = getDistance(state.currentGpsLoc[1], state.currentGpsLoc[0], stepLoc[1], stepLoc[0]);
                 
-                ui.instr.innerText = nextStep.maneuver.instruction;
-                ui.dist.innerText = Math.round(dist) + " m";
+                ui.instructionText.innerText = nextStep.maneuver.instruction;
+                ui.distanceText.innerText = Math.round(dist) + " m";
 
-                if (dist < 10) {
+                if (dist < 10) { // Si estamos a menos de 10 metros del punto de giro
                     speak(nextStep.maneuver.instruction);
-                    state.steps.shift();
+                    state.steps.shift(); // Eliminar el paso actual
                     if (state.steps.length === 0) {
-                        ui.instr.innerText = texts[state.lang].arrived;
+                        ui.instructionText.innerText = texts[state.lang].arrived;
                         speak(texts[state.lang].arrived);
                         state.navigating = false;
+                        // Opcional: limpiar las flechas AR
+                        ui.routeContainer.innerHTML = ''; 
                     }
                 }
             }, 2500);
@@ -409,9 +629,10 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
-        ui.btnVoice.addEventListener('click', () => {
+        // --- VOZ ---
+        ui.btnVoiceAr.addEventListener('click', () => {
             state.voice = !state.voice;
-            ui.btnVoice.innerText = state.voice ? texts[state.lang].voiceOn : texts[state.lang].voiceOff;
+            updateUI(); // Para actualizar el icono
             if(!state.voice) window.speechSynthesis.cancel();
         });
 
@@ -422,6 +643,9 @@
             u.lang = state.lang === 'es' ? 'es-MX' : 'en-US';
             window.speechSynthesis.speak(u);
         }
+        
+        // --- INICIALIZACIÓN ---
+        updateUI(); // Llama una vez para configurar el estado inicial de la UI
     </script>
 </body>
 </html>
