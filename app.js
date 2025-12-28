@@ -1,7 +1,7 @@
 // app.js
 
 // CONFIGURACIÓN
-const MAPBOX_TOKEN = pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg; 
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg'; 
 let vozActiva = true;
 let destino = null; // Coordenadas del destino [longitud, latitud]
 let ubicacionActual = null;
@@ -163,4 +163,5 @@ function distanciaEnMetros(lat1, lon1, lat2, lon2) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
     return R * c;
+
 }
