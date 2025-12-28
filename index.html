@@ -62,7 +62,187 @@
 
     </a-scene>
 
-    <!-- Lógica de la aplicación -->
-    <script src="app.js"></script>
+    <!-- LÓGICA JAVASCRIPT INTEGRADA -->
+    <script>
+        // CONFIGURACIÓN
+        // IMPORTANTE: He añadido comillas simples '' al token para evitar errores de sintaxis
+        const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg'; 
+        
+        let vozActiva = true;
+        let destino = null; 
+        let ubicacionActual = null;
+
+        // ELEMENTOS DOM
+        const statusDiv = document.getElementById('status');
+        const btnVoice = document.getElementById('btn-voice');
+        const btnStart = document.getElementById('btn-start');
+        const scene = document.querySelector('a-scene');
+
+        // 1. OBTENER UBICACIÓN ACTUAL (CON MEJORA DE ERRORES)
+        if (navigator.geolocation) {
+            statusDiv.innerText = "Solicitando permiso GPS...";
+            
+            const options = {
+                enableHighAccuracy: true, // Trata de usar GPS
+                timeout: 10000,           // Espera máximo 10 seg
+                maximumAge: 0
+            };
+
+            const success = (position) => {
+                ubicacionActual = [position.coords.longitude, position.coords.latitude];
+                // Actualizamos el texto con coordenadas reales
+                statusDiv.innerText = `GPS: ${ubicacionActual[1].toFixed(5)}, ${ubicacionActual[0].toFixed(5)}`;
+                // Habilitamos visualmente el botón
+                btnStart.style.backgroundColor = "green"; 
+            };
+
+            const error = (err) => {
+                console.warn('ERROR(' + err.code + '): ' + err.message);
+                let mensaje = "Error GPS: ";
+                if (err.code === 1) mensaje += "Permiso denegado. Actívalo en el navegador.";
+                if (err.code === 2) mensaje += "Ubicación no disponible (Mala señal).";
+                if (err.code === 3) mensaje += "Tiempo de espera agotado.";
+                
+                statusDiv.innerText = mensaje;
+                alert(mensaje); 
+            };
+
+            // Primero intentamos obtener la posición una vez rápido
+            navigator.geolocation.getCurrentPosition(success, error, options);
+            
+            // Luego seguimos rastreando
+            navigator.geolocation.watchPosition(success, error, options);
+
+        } else {
+            alert("Tu navegador no soporta geolocalización.");
+        }
+
+        // 2. CONFIGURAR VOZ (Web Speech API)
+        btnVoice.addEventListener('click', () => {
+            vozActiva = !vozActiva;
+            btnVoice.innerText = vozActiva ? "🔊 Voz: ON" : "🔇 Voz: OFF";
+            if (!vozActiva) window.speechSynthesis.cancel();
+        });
+
+        function hablar(texto) {
+            if (!vozActiva) return;
+            const utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = 'es-ES'; // Español
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 3. INICIAR RUTA
+        btnStart.addEventListener('click', () => {
+            if (!ubicacionActual) {
+                alert("Esperando señal GPS...");
+                return;
+            }
+
+            // Ejemplo: Destino fijo (PUNTO DE PRUEBA: Plaza Mayor, Madrid)
+            // CAMBIA ESTAS COORDENADAS POR UN LUGAR CERCA DE TI PARA PROBAR
+            const destinoFicticio = [-3.703790, 40.416775]; 
+            
+            obtenerRuta(ubicacionActual, destinoFicticio);
+        });
+
+        // 4. OBTENER RUTA DE MAPBOX
+        async function obtenerRuta(inicio, fin) {
+            statusDiv.innerText = "Calculando ruta...";
+            hablar("Calculando la ruta hacia tu destino.");
+
+            const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${inicio[0]},${inicio[1]};${fin[0]},${fin[1]}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.routes && data.routes.length > 0) {
+                    const ruta = data.routes[0];
+                    const pasos = ruta.legs[0].steps;
+                    const coordenadas = ruta.geometry.coordinates;
+
+                    renderizarCaminoAR(coordenadas);
+                    monitorizarPasos(pasos);
+                    
+                    hablar(`Ruta encontrada. La distancia es de ${Math.round(ruta.distance)} metros.`);
+                } else {
+                    alert("No se encontró ruta.");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error conectando con Mapbox. Revisa la consola.");
+            }
+        }
+
+        // 5. RENDERIZAR OBJETOS EN AR
+        function renderizarCaminoAR(coordenadas) {
+            const container = document.getElementById('route-container');
+            container.innerHTML = ''; // Limpiar anterior
+
+            // Dibujamos una flecha roja cada 3 puntos de la geometría
+            coordenadas.forEach((coord, index) => {
+                if (index % 3 !== 0) return; 
+
+                const latitude = coord[1];
+                const longitude = coord[0];
+
+                // Crear elemento A-Frame
+                const flecha = document.createElement('a-entity');
+                
+                // Atributo clave de AR.js
+                flecha.setAttribute('gps-new-entity-place', `latitude: ${latitude}; longitude: ${longitude}`);
+                
+                // Geometría visual
+                flecha.setAttribute('geometry', 'primitive: cone; radiusBottom: 0.5; height: 2');
+                flecha.setAttribute('material', 'color: red');
+                flecha.setAttribute('position', '0 0 0'); 
+                flecha.setAttribute('scale', '1 1 1');
+
+                container.appendChild(flecha);
+            });
+        }
+
+        // 6. MONITORIZAR PASOS
+        function monitorizarPasos(pasos) {
+            let pasoActual = 0;
+            
+            const intervaloCheck = setInterval(() => {
+                if (pasoActual >= pasos.length) {
+                    clearInterval(intervaloCheck);
+                    hablar("Has llegado a tu destino.");
+                    return;
+                }
+
+                const paso = pasos[pasoActual];
+                const destinoPaso = paso.maneuver.location; // [lon, lat]
+                
+                const dist = distanciaEnMetros(ubicacionActual[1], ubicacionActual[0], destinoPaso[1], destinoPaso[0]);
+
+                statusDiv.innerText = `Siguiente: ${paso.maneuver.instruction} (${Math.round(dist)}m)`;
+
+                // Si estamos cerca del punto de maniobra (15 metros)
+                if (dist < 15) {
+                    hablar(paso.maneuver.instruction);
+                    pasoActual++;
+                }
+            }, 3000); 
+        }
+
+        // Utilidad para calcular distancia
+        function distanciaEnMetros(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Radio tierra metros
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lon2-lon1) * Math.PI/180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c;
+        }
+    </script>
 </body>
 </html>
