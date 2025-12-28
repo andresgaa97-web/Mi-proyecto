@@ -2,247 +2,317 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Navegación WebAR</title>
-    <!-- A-Frame -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AR Navigation Pro</title>
+    
+    <!-- A-FRAME y AR.JS -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <!-- AR.js para geolocalización -->
     <script type='text/javascript' src='https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex-location-only.js'></script>
     <script type='text/javascript' src='https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js'></script>
+
     <style>
-        /* Estilos básicos para la UI */
-        #ui-container {
-            position: absolute;
-            bottom: 20px;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            z-index: 10;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            margin: 5px;
-            border-radius: 5px;
-            border: none;
-            background-color: #333;
-            color: white;
-        }
-        #status {
+        body, html { margin: 0; padding: 0; overflow: hidden; background-color: transparent !important; }
+        
+        /* Controles UI Superiores */
+        #top-ui {
             position: absolute;
             top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.5);
-            color: white;
-            padding: 5px;
-            z-index: 10;
+            left: 0;
+            width: 100%;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
         }
+
+        .row { display: flex; gap: 10px; justify-content: center; width: 90%; }
+        
+        input {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 70%;
+            font-size: 16px;
+        }
+
+        select {
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        /* Controles UI Inferiores */
+        #bottom-ui {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            z-index: 999;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+
+        button:active { transform: scale(0.95); }
+
+        #status-bar {
+            background: rgba(0, 0, 0, 0.7);
+            color: #00ff00;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-bottom: 5px;
+            display: inline-block;
+        }
+
+        /* Corrección pantalla blanca: forzar transparencia */
+        a-scene { display: block; width: 100%; height: 100%; }
+        video { z-index: -1 !important; } /* Video al fondo */
     </style>
 </head>
-<body style="margin: 0; overflow: hidden;">
 
-    <!-- UI -->
-    <div id="status">Esperando GPS...</div>
-    <div id="ui-container">
-        <button id="btn-start">Iniciar Ruta</button>
-        <button id="btn-voice">🔊 Voz: ON</button>
+<body>
+
+    <!-- INTERFAZ DE USUARIO -->
+    <div id="top-ui">
+        <!-- Fila 1: Idioma y Estado -->
+        <div class="row" style="justify-content: space-between;">
+            <div id="status-bar">GPS: Waiting...</div>
+            <select id="lang-select">
+                <option value="es">🇪🇸 Español</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+        </div>
+
+        <!-- Fila 2: Buscador -->
+        <div class="row">
+            <input type="text" id="destination-input" placeholder="Ej: Starbucks, Parque...">
+        </div>
     </div>
 
-    <!-- Escena AR -->
+    <div id="bottom-ui">
+        <button id="btn-action">▶ Iniciar / Start</button>
+        <button id="btn-voice" style="background: #444;">🔊</button>
+    </div>
+
+    <!-- ESCENA AR (Con corrección de transparencia) -->
     <a-scene
         vr-mode-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true; alpha: true;" 
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; videoTexture: true;">
         
-        <!-- Cámara con simulación de GPS -->
         <a-camera gps-camera rotation-reader></a-camera>
 
-        <!-- Aquí inyectaremos las flechas dinámicamente -->
+        <!-- Contenedor de las flechas -->
         <a-entity id="route-container"></a-entity>
-
     </a-scene>
 
-    <!-- LÓGICA JAVASCRIPT INTEGRADA -->
     <script>
-        // CONFIGURACIÓN
-        // IMPORTANTE: He añadido comillas simples '' al token para evitar errores de sintaxis
-        const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg'; 
+        /**
+         * CONFIGURACIÓN
+         */
+        const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
         
-        let vozActiva = true;
-        let destino = null; 
-        let ubicacionActual = null;
+        // Estado de la App
+        let state = {
+            lang: 'es',
+            voiceEnabled: true,
+            currentLoc: null, // [lon, lat]
+            isNavigating: false
+        };
 
-        // ELEMENTOS DOM
-        const statusDiv = document.getElementById('status');
-        const btnVoice = document.getElementById('btn-voice');
-        const btnStart = document.getElementById('btn-start');
-        const scene = document.querySelector('a-scene');
+        // Textos / Traducciones
+        const texts = {
+            es: {
+                waitGps: "Esperando GPS...",
+                calculating: "Calculando ruta...",
+                notFound: "No se encontró el lugar. Intenta otro nombre.",
+                start: "Iniciar Ruta",
+                arrived: "Has llegado a tu destino.",
+                errorGps: "Error GPS: ",
+                voiceOn: "🔊",
+                voiceOff: "🔇",
+                placeholder: "Buscar destino (ej: Oxxo)"
+            },
+            en: {
+                waitGps: "Waiting for GPS...",
+                calculating: "Calculating route...",
+                notFound: "Location not found. Try another name.",
+                start: "Start Route",
+                arrived: "You have arrived.",
+                errorGps: "GPS Error: ",
+                voiceOn: "🔊",
+                voiceOff: "🔇",
+                placeholder: "Search destination (e.g., Starbucks)"
+            }
+        };
 
-        // 1. OBTENER UBICACIÓN ACTUAL (CON MEJORA DE ERRORES)
-        if (navigator.geolocation) {
-            statusDiv.innerText = "Solicitando permiso GPS...";
-            
-            const options = {
-                enableHighAccuracy: true, // Trata de usar GPS
-                timeout: 10000,           // Espera máximo 10 seg
-                maximumAge: 0
-            };
+        // DOM Elements
+        const ui = {
+            status: document.getElementById('status-bar'),
+            btnAction: document.getElementById('btn-action'),
+            btnVoice: document.getElementById('btn-voice'),
+            input: document.getElementById('destination-input'),
+            langSelect: document.getElementById('lang-select'),
+            scene: document.querySelector('a-scene')
+        };
 
-            const success = (position) => {
-                ubicacionActual = [position.coords.longitude, position.coords.latitude];
-                // Actualizamos el texto con coordenadas reales
-                statusDiv.innerText = `GPS: ${ubicacionActual[1].toFixed(5)}, ${ubicacionActual[0].toFixed(5)}`;
-                // Habilitamos visualmente el botón
-                btnStart.style.backgroundColor = "green"; 
-            };
-
-            const error = (err) => {
-                console.warn('ERROR(' + err.code + '): ' + err.message);
-                let mensaje = "Error GPS: ";
-                if (err.code === 1) mensaje += "Permiso denegado. Actívalo en el navegador.";
-                if (err.code === 2) mensaje += "Ubicación no disponible (Mala señal).";
-                if (err.code === 3) mensaje += "Tiempo de espera agotado.";
-                
-                statusDiv.innerText = mensaje;
-                alert(mensaje); 
-            };
-
-            // Primero intentamos obtener la posición una vez rápido
-            navigator.geolocation.getCurrentPosition(success, error, options);
-            
-            // Luego seguimos rastreando
-            navigator.geolocation.watchPosition(success, error, options);
-
-        } else {
-            alert("Tu navegador no soporta geolocalización.");
-        }
-
-        // 2. CONFIGURAR VOZ (Web Speech API)
-        btnVoice.addEventListener('click', () => {
-            vozActiva = !vozActiva;
-            btnVoice.innerText = vozActiva ? "🔊 Voz: ON" : "🔇 Voz: OFF";
-            if (!vozActiva) window.speechSynthesis.cancel();
+        /**
+         * 1. SISTEMA DE IDIOMA
+         */
+        ui.langSelect.addEventListener('change', (e) => {
+            state.lang = e.target.value;
+            updateTexts();
         });
 
-        function hablar(texto) {
-            if (!vozActiva) return;
-            const utterance = new SpeechSynthesisUtterance(texto);
-            utterance.lang = 'es-ES'; // Español
-            window.speechSynthesis.speak(utterance);
+        function updateTexts() {
+            const t = texts[state.lang];
+            ui.input.placeholder = t.placeholder;
+            ui.btnAction.innerText = t.start;
+            if(!state.currentLoc) ui.status.innerText = t.waitGps;
         }
 
-        // 3. INICIAR RUTA
-        btnStart.addEventListener('click', () => {
-            if (!ubicacionActual) {
-                alert("Esperando señal GPS...");
+        /**
+         * 2. SISTEMA GPS
+         */
+        if (navigator.geolocation) {
+            const options = { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 };
+            
+            navigator.geolocation.watchPosition(
+                (pos) => {
+                    state.currentLoc = [pos.coords.longitude, pos.coords.latitude];
+                    ui.status.innerText = `GPS: ${state.currentLoc[1].toFixed(5)}, ${state.currentLoc[0].toFixed(5)}`;
+                    ui.status.style.color = '#00ff00'; // Verde = OK
+                },
+                (err) => {
+                    console.error(err);
+                    ui.status.innerText = texts[state.lang].errorGps + err.code;
+                    ui.status.style.color = 'red';
+                },
+                options
+            );
+        } else {
+            alert("Geolocation not supported / GPS no soportado");
+        }
+
+        /**
+         * 3. LÓGICA DE BÚSQUEDA Y RUTA
+         */
+        ui.btnAction.addEventListener('click', async () => {
+            if (!state.currentLoc) {
+                alert(texts[state.lang].waitGps);
                 return;
             }
 
-            // Ejemplo: Destino fijo (PUNTO DE PRUEBA: Plaza Mayor, Madrid)
-            // CAMBIA ESTAS COORDENADAS POR UN LUGAR CERCA DE TI PARA PROBAR
-            const destinoFicticio = [-3.703790, 40.416775]; 
+            const query = ui.input.value;
+            if (!query) return;
+
+            speak(texts[state.lang].calculating);
             
-            obtenerRuta(ubicacionActual, destinoFicticio);
-        });
-
-        // 4. OBTENER RUTA DE MAPBOX
-        async function obtenerRuta(inicio, fin) {
-            statusDiv.innerText = "Calculando ruta...";
-            hablar("Calculando la ruta hacia tu destino.");
-
-            const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${inicio[0]},${inicio[1]};${fin[0]},${fin[1]}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+            // Paso A: Buscar Coordenadas del destino (Geocoding)
+            // Usamos 'proximity' para buscar lugares CERCA de tu ubicación GPS actual
+            const searchUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?proximity=${state.currentLoc[0]},${state.currentLoc[1]}&access_token=${MAPBOX_TOKEN}`;
 
             try {
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                if (data.routes && data.routes.length > 0) {
-                    const ruta = data.routes[0];
-                    const pasos = ruta.legs[0].steps;
-                    const coordenadas = ruta.geometry.coordinates;
+                const resGeo = await fetch(searchUrl);
+                const dataGeo = await resGeo.json();
 
-                    renderizarCaminoAR(coordenadas);
-                    monitorizarPasos(pasos);
-                    
-                    hablar(`Ruta encontrada. La distancia es de ${Math.round(ruta.distance)} metros.`);
-                } else {
-                    alert("No se encontró ruta.");
-                }
-            } catch (e) {
-                console.error(e);
-                alert("Error conectando con Mapbox. Revisa la consola.");
-            }
-        }
-
-        // 5. RENDERIZAR OBJETOS EN AR
-        function renderizarCaminoAR(coordenadas) {
-            const container = document.getElementById('route-container');
-            container.innerHTML = ''; // Limpiar anterior
-
-            // Dibujamos una flecha roja cada 3 puntos de la geometría
-            coordenadas.forEach((coord, index) => {
-                if (index % 3 !== 0) return; 
-
-                const latitude = coord[1];
-                const longitude = coord[0];
-
-                // Crear elemento A-Frame
-                const flecha = document.createElement('a-entity');
-                
-                // Atributo clave de AR.js
-                flecha.setAttribute('gps-new-entity-place', `latitude: ${latitude}; longitude: ${longitude}`);
-                
-                // Geometría visual
-                flecha.setAttribute('geometry', 'primitive: cone; radiusBottom: 0.5; height: 2');
-                flecha.setAttribute('material', 'color: red');
-                flecha.setAttribute('position', '0 0 0'); 
-                flecha.setAttribute('scale', '1 1 1');
-
-                container.appendChild(flecha);
-            });
-        }
-
-        // 6. MONITORIZAR PASOS
-        function monitorizarPasos(pasos) {
-            let pasoActual = 0;
-            
-            const intervaloCheck = setInterval(() => {
-                if (pasoActual >= pasos.length) {
-                    clearInterval(intervaloCheck);
-                    hablar("Has llegado a tu destino.");
+                if (!dataGeo.features || dataGeo.features.length === 0) {
+                    alert(texts[state.lang].notFound);
+                    speak(texts[state.lang].notFound);
                     return;
                 }
 
-                const paso = pasos[pasoActual];
-                const destinoPaso = paso.maneuver.location; // [lon, lat]
+                // Tomamos el primer resultado
+                const destinoCoords = dataGeo.features[0].center; // [lon, lat]
+                console.log("Destino encontrado:", dataGeo.features[0].place_name, destinoCoords);
+
+                // Paso B: Calcular Ruta caminando
+                obtenerRuta(state.currentLoc, destinoCoords);
+
+            } catch (e) {
+                console.error(e);
+                alert("Error de conexión API");
+            }
+        });
+
+        async function obtenerRuta(start, end) {
+            const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+            
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.routes && data.routes[0]) {
+                const route = data.routes[0];
+                renderRoute(route.geometry.coordinates);
                 
-                const dist = distanciaEnMetros(ubicacionActual[1], ubicacionActual[0], destinoPaso[1], destinoPaso[0]);
+                // Mensaje inicial con distancia
+                const msg = state.lang === 'es' 
+                    ? `Destino a ${Math.round(route.distance)} metros.` 
+                    : `Destination is ${Math.round(route.distance)} meters away.`;
+                speak(msg);
 
-                statusDiv.innerText = `Siguiente: ${paso.maneuver.instruction} (${Math.round(dist)}m)`;
-
-                // Si estamos cerca del punto de maniobra (15 metros)
-                if (dist < 15) {
-                    hablar(paso.maneuver.instruction);
-                    pasoActual++;
-                }
-            }, 3000); 
+                // Iniciar monitor de pasos (simplificado)
+                monitorSteps(route.legs[0].steps);
+            }
         }
 
-        // Utilidad para calcular distancia
-        function distanciaEnMetros(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // Radio tierra metros
-            const φ1 = lat1 * Math.PI/180;
-            const φ2 = lat2 * Math.PI/180;
-            const Δφ = (lat2-lat1) * Math.PI/180;
-            const Δλ = (lon2-lon1) * Math.PI/180;
+        function renderRoute(coords) {
+            const container = document.getElementById('route-container');
+            container.innerHTML = ''; 
 
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                      Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            // Dibujar flechas
+            coords.forEach((coord, i) => {
+                if (i % 2 !== 0) return; // Optimización: dibujar 1 de cada 2 puntos
 
-            return R * c;
+                const el = document.createElement('a-entity');
+                el.setAttribute('gps-new-entity-place', `latitude: ${coord[1]}; longitude: ${coord[0]}`);
+                el.setAttribute('geometry', 'primitive: cone; radiusBottom: 0.2; height: 1'); // Cono más pequeño
+                el.setAttribute('material', 'color: yellow'); // Color amarillo más visible en calle
+                el.setAttribute('position', '0 0 0');
+                container.appendChild(el);
+            });
         }
+
+        function monitorSteps(steps) {
+            // Lógica simple para leer la primera instrucción
+            if(steps.length > 0) {
+                speak(steps[0].maneuver.instruction);
+            }
+        }
+
+        /**
+         * 4. SISTEMA DE VOZ
+         */
+        ui.btnVoice.addEventListener('click', () => {
+            state.voiceEnabled = !state.voiceEnabled;
+            ui.btnVoice.innerText = state.voiceEnabled ? texts[state.lang].voiceOn : texts[state.lang].voiceOff;
+            if(!state.voiceEnabled) window.speechSynthesis.cancel();
+        });
+
+        function speak(text) {
+            if (!state.voiceEnabled) return;
+            window.speechSynthesis.cancel(); // Detener voz anterior
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = state.lang === 'es' ? 'es-MX' : 'en-US'; // Español Latam o Ingles US
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Inicializar textos
+        updateTexts();
+
     </script>
 </body>
 </html>
