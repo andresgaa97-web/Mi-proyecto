@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>AR Sistema de Guía - La Paz</title>
+    <title>AR Sistema de Guía - Lag Paz</title>
 
     <!-- FONTS -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -84,14 +84,23 @@
 
         .header-title {
             font-family: var(--font-display);
-            font-size: 18px;
+            font-size: 16px;
+            /* Ajustado para el logo */
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             color: var(--accent-cyan);
             text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        .app-logo {
+            height: 40px;
+            width: auto;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
         /* Config / Audio Toolbar */
@@ -444,8 +453,15 @@
     <!-- 1. MAP SELECTION -->
     <div id="map-view">
         <div class="top-bar">
+            <!-- HEADER WITH LOGO -->
             <div class="header-title">
-                <span>VIRTUAL PATH <span style="font-size:10px; opacity:0.7">AR BETA</span></span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <img src="logo.png" class="app-logo" alt="Logo">
+                    <div>
+                        <div style="line-height:1; font-weight:900;">BAJASTAY</div>
+                        <div style="font-size:8px; opacity:0.7; letter-spacing:3px;">NAVEGACIÓN AR</div>
+                    </div>
+                </div>
                 <span class="info-pill" id="status-pill">MODO RUTA</span>
             </div>
 
