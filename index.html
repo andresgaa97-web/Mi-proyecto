@@ -458,11 +458,13 @@
                     <button class="mode-btn active" id="btn-add-wp" onclick="setMode('waypoint')">+ PARADA</button>
                     <button class="mode-btn special" id="btn-set-dest" onclick="setMode('dest')">DESTINO 🏁</button>
                 </div>
+                <!-- Action Buttons: Reset Default is Key -->
                 <div class="control-row">
-                    <button class="mode-btn" onclick="setStartToAirport()" style="font-size:10px; opacity:0.8;">✈️ LAP
-                        AIRPORT</button>
+                    <button class="mode-btn" onclick="loadDefaultRoute()"
+                        style="font-size:10px; opacity:0.9; background:#004444; border-color:#008888;">🔄 RUTA
+                        DEFAULT</button>
                     <button class="mode-btn" onclick="clearRoute()"
-                        style="font-size:10px; opacity:0.8; background:#333;">🗑️ BORRAR</button>
+                        style="font-size:10px; opacity:0.6; background:#333;">🗑️ LIMPIAR</button>
                 </div>
             </div>
 
@@ -519,6 +521,20 @@
         const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
         mapboxgl.accessToken = MAPBOX_TOKEN;
 
+        // --- DEFAULT ROUTE CONFIG (From Image) ---
+        // Airport -> Highway North -> Turn Left into Chametla -> Main Rd West -> Left into Residential
+        const DEFAULT_ROUTE = {
+            s: [-110.3626, 24.0726], // LAP Airport Terminal
+            w: [
+                [-110.3624, 24.0850], // Force North on Highway
+                [-110.3615, 24.0950], // Approach Junction
+                [-110.3640, 24.0975], // Turn Left into Chametla Entrance
+                [-110.3700, 24.0965]  // Along Chametla Main Road (West)
+            ],
+            d: [-110.3725, 24.0945], // Final House (Approx)
+            dn: "Airbnb Chametla"
+        };
+
         let app = {
             mode: 'waypoint', start: null, waypoints: [], dest: null,
             routeGeoJSON: null, navigating: false, currentStep: 0,
@@ -562,20 +578,19 @@
         };
 
         map.on('load', () => {
-            navigator.geolocation.getCurrentPosition(pos => {
-                const userLoc = [pos.coords.longitude, pos.coords.latitude];
-                app.start = userLoc;
+            // 1. Try to load Route from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('route')) {
+                loadRouteFromURL(urlParams.get('route'));
+            } else {
+                // 2. No URL? Load DEFAULT ROUTE Automatically
+                loadDefaultRoute();
+            }
 
-                const urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.has('route')) {
-                    loadRouteFromURL(urlParams.get('route'));
-                } else {
-                    new mapboxgl.Marker({ color: '#00f3ff' }).setLngLat(userLoc).addTo(map);
-                    map.flyTo({ center: userLoc, zoom: 15 });
-                    els.loader.style.opacity = 0;
-                    setTimeout(() => els.loader.style.display = 'none', 500);
-                }
-            }, err => { alert("GPS Requerido / GPS Required"); els.loader.style.display = 'none'; }, { enableHighAccuracy: true });
+            // 3. User GPS (optional background update, don't override start unless requested)
+            navigator.geolocation.getCurrentPosition(pos => {
+                // Just center map initially if user is far away? No, keep it on the route.
+            }, err => console.log("GPS Peding"), { enableHighAccuracy: true });
         });
 
         map.on('movestart', () => { els.pinIcon.parentNode.classList.add('pin-lift'); });
@@ -620,6 +635,23 @@
             const lap = [-110.3626, 24.0726]; app.start = lap; map.flyTo({ center: lap, zoom: 14 });
             new mapboxgl.Marker({ color: '#aaaaaa' }).setLngLat(lap).addTo(map);
         }
+
+        // --- DEFAULT ROUTE LOADER ---
+        window.loadDefaultRoute = () => {
+            app.start = DEFAULT_ROUTE.s;
+            app.waypoints = DEFAULT_ROUTE.w.map(c => ({ coords: c, name: "Punto Vía" }));
+            app.dest = { coords: DEFAULT_ROUTE.d, name: DEFAULT_ROUTE.dn };
+
+            els.loader.style.display = 'block';
+            els.loader.style.opacity = 1;
+            els.loader.innerHTML = '<div class="spinner"></div><p style="color:white; margin-top:10px;">CARGANDO RUTA PREDEFINIDA...</p>';
+
+            renderList();
+            calculateRoute().then(() => {
+                map.flyTo({ center: app.start, zoom: 13 });
+                setTimeout(() => { els.loader.style.opacity = 0; setTimeout(() => els.loader.style.display = 'none', 500); }, 500);
+            });
+        };
 
         function clearRoute() {
             app.waypoints = []; app.dest = null; app.routeGeoJSON = null;
