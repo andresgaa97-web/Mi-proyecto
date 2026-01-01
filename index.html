@@ -521,17 +521,16 @@
         const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
         mapboxgl.accessToken = MAPBOX_TOKEN;
 
-        // --- DEFAULT ROUTE CONFIG (From Image) ---
-        // Airport -> Highway North -> Turn Left into Chametla -> Main Rd West -> Left into Residential
+        // --- DEFAULT ROUTE CONFIG (Corrected to User Map) ---
+        // Route: Exit Airport -> Highway North (Right) -> Turn Left at Chametla -> Straight West -> End
         const DEFAULT_ROUTE = {
-            s: [-110.3626, 24.0726], // LAP Airport Terminal
+            s: [-110.3627, 24.0730], // LAP Airport Start
             w: [
-                [-110.3624, 24.0850], // Force North on Highway
-                [-110.3615, 24.0950], // Approach Junction
-                [-110.3640, 24.0975], // Turn Left into Chametla Entrance
-                [-110.3700, 24.0965]  // Along Chametla Main Road (West)
+                [-110.3585, 24.0855], // Highway North 1 (Force exit correctly)
+                [-110.3535, 24.1010], // Highway Junction (Before Turn)
+                [-110.3610, 24.1022]  // After Turn (Calle La Paz / Chametla Main)
             ],
-            d: [-110.3725, 24.0945], // Final House (Approx)
+            d: [-110.3745, 24.0965], // Final Destination (Residential Area)
             dn: "Airbnb Chametla"
         };
 
