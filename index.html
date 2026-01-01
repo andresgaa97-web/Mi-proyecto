@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>BajaStay Rentals Pro</title>
-    
+
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
 
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    
+
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex-location-only.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -28,123 +28,336 @@
             --font: 'Outfit', sans-serif;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; background: var(--primary); font-family: var(--font); color: var(--text); overflow: hidden; }
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            background: var(--primary);
+            font-family: var(--font);
+            color: var(--text);
+            overflow: hidden;
+        }
 
         /* === LOADERS === */
         #loader {
-            position: fixed; inset: 0; z-index: 3000;
-            background: black; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
+            position: fixed;
+            inset: 0;
+            z-index: 3000;
+            background: black;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             transition: opacity 0.5s;
         }
+
         .spinner {
-            width: 40px; height: 40px; border: 4px solid #333;
-            border-top-color: var(--accent); border-radius: 50%;
-            animation: spin 1s linear infinite; margin-bottom: 20px;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #333;
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
 
         /* === LANDING === */
         #landing-overlay {
-            position: fixed; inset: 0; z-index: 2000;
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
             background: linear-gradient(180deg, #1a1a1a 0%, #000000 100%);
-            display: flex; flex-direction: column; padding: 30px;
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
             transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
         }
-        #landing-overlay.closed { transform: translateY(-100%); }
 
-        .landing-header { margin-bottom: 40px; display: flex; align-items: center; gap: 20px; }
-        .big-logo {
-            width: 80px; height: 80px; background: white; border-radius: 20px;
-            background-image: url('logo.jpeg'); background-size: cover;
-            box-shadow: 0 0 30px rgba(0, 243, 255, 0.15); flex-shrink: 0;
+        #landing-overlay.closed {
+            transform: translateY(-100%);
         }
-        .landing-title h1 { margin: 0; font-size: 32px; font-weight: 800; line-height: 1; }
-        .landing-title p { margin: 5px 0 0; font-size: 14px; opacity: 0.6; letter-spacing: 2px; color: var(--accent); }
+
+        .landing-header {
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .big-logo {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 20px;
+            background-image: url('logo.jpeg');
+            background-size: contain !important;
+            background-position: center;
+            background-repeat: no-repeat;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.15);
+            flex-shrink: 0;
+        }
+
+        .landing-title h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .landing-title p {
+            margin: 5px 0 0;
+            font-size: 14px;
+            opacity: 0.6;
+            letter-spacing: 2px;
+            color: var(--accent);
+        }
 
         .route-card {
-            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
-            border-radius: 24px; padding: 25px; margin-bottom: 20px;
-            display: flex; align-items: center; gap: 20px; cursor: pointer;
-            transition: 0.3s; position: relative;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 25px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
         }
-        .route-card.selected { border-color: var(--accent); background: rgba(0, 243, 255, 0.05); }
+
+        .route-card.selected {
+            border-color: var(--accent);
+            background: rgba(0, 243, 255, 0.05);
+        }
+
         .card-icon {
-            font-size: 28px; background: rgba(0,0,0,0.3); width: 50px; height: 50px;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            font-size: 28px;
+            background: rgba(0, 0, 0, 0.3);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
 
         /* === MAP UI === */
-        #map-view { position: absolute; inset: 0; display: flex; flex-direction: column; z-index: 100; opacity: 1; transition: opacity 0.5s; }
-        #map-view.hidden { pointer-events: none; }
-        
-        .fixed-header {
-            position: absolute; top: 20px; left: 20px; right: 20px; height: 60px;
-            z-index: 1000; display: flex; justify-content: space-between; align-items: center;
+        #map-view {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            opacity: 1;
+            transition: opacity 0.5s;
+        }
+
+        #map-view.hidden {
             pointer-events: none;
         }
-        .mini-logo-wrapper {
-            width: 50px; height: 50px; background: white; border-radius: 14px;
-            background-image: url('logo.jpeg'); background-size: cover;
-            border: 2px solid white; pointer-events: auto; cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+
+        .fixed-header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            height: 60px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
         }
-        .controls { pointer-events: auto; display: flex; gap: 10px; }
+
+        .mini-logo-wrapper {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 14px;
+            background-image: url('logo.jpeg');
+            background-size: contain !important;
+            background-position: center;
+            background-repeat: no-repeat;
+            border: 2px solid white;
+            pointer-events: auto;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        /* MINI MAP CONTAINER */
+        #mini-map-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 120px;
+            height: 120px;
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            z-index: 200;
+            pointer-events: none;
+            /* No interaction */
+        }
+
+        #mini-map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            pointer-events: auto;
+            display: flex;
+            gap: 10px;
+        }
+
         .ctrl-btn {
-            width: 44px; height: 44px; border-radius: 50%;
-            background: rgba(20,20,20,0.8); backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2); color: white;
-            font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
         }
 
         .bottom-card {
-            position: absolute; bottom: 30px; left: 20px; right: 20px;
-            background: var(--glass); border-radius: 24px; padding: 24px;
-            border: 1px solid var(--glass-border); z-index: 500;
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            right: 20px;
+            background: var(--glass);
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid var(--glass-border);
+            z-index: 500;
             backdrop-filter: blur(20px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
         }
+
         .btn-start {
-            width: 100%; background: white; color: black; font-weight: 800;
-            padding: 16px; border-radius: 16px; border: none; font-size: 16px;
-            margin-top: 15px; cursor: pointer; transition: 0.2s;
+            width: 100%;
+            background: white;
+            color: black;
+            font-weight: 800;
+            padding: 16px;
+            border-radius: 16px;
+            border: none;
+            font-size: 16px;
+            margin-top: 15px;
+            cursor: pointer;
+            transition: 0.2s;
         }
-        .btn-start:disabled { opacity: 0.5; background: #555; }
-        .btn-start:active { transform: scale(0.98); }
+
+        .btn-start:disabled {
+            opacity: 0.5;
+            background: #555;
+        }
+
+        .btn-start:active {
+            transform: scale(0.98);
+        }
 
         /* === PULSING DOT MARKER (PRO) === */
         .user-marker {
-            width: 20px; height: 20px; background-color: var(--accent);
-            border-radius: 50%; border: 3px solid white;
+            width: 20px;
+            height: 20px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            border: 3px solid white;
             box-shadow: 0 0 10px rgba(0, 243, 255, 0.7);
             animation: pulse 2s infinite;
         }
+
         @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(0, 243, 255, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(0, 243, 255, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 243, 255, 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 243, 255, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(0, 243, 255, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 243, 255, 0);
+            }
         }
 
         /* === AR VIEW === */
         #ar-view {
-            position: absolute; inset: 0; z-index: 50; visibility: hidden; opacity: 0;
-            transition: opacity 0.5s; background: black;
+            position: absolute;
+            inset: 0;
+            z-index: 50;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.5s;
+            background: black;
         }
-        #ar-view.visible { visibility: visible; opacity: 1; background: transparent; }
-        
-        .ar-hud { position: absolute; padding: 20px; inset: 0; pointer-events: none; display: flex; flex-direction: column; }
-        .ar-top { margin-top: 10px; display: flex; justify-content: space-between; pointer-events: auto; }
-        
+
+        #ar-view.visible {
+            visibility: visible;
+            opacity: 1;
+            background: transparent;
+        }
+
+        .ar-hud {
+            position: absolute;
+            padding: 20px;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ar-top {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: auto;
+        }
+
         .instr-box {
-            background: rgba(0,0,0,0.85); padding: 15px 20px; border-radius: 16px;
-            border-left: 4px solid var(--accent); backdrop-filter: blur(5px);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px 20px;
+            border-radius: 16px;
+            border-left: 4px solid var(--accent);
+            backdrop-filter: blur(5px);
         }
-        .big-instr { font-size: 20px; font-weight: 700; color: white; margin-bottom: 4px; }
+
+        .big-instr {
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 4px;
+        }
 
         .arrow-wrap {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 200px; height: 200px; display: flex; align-items: center; justify-content: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
@@ -167,7 +380,7 @@
 
         <div style="flex:1;">
             <p style="margin-bottom:20px; font-size:12px; font-weight:700; color:#888;">SELECCIONA TU RUTA</p>
-            
+
             <div class="route-card selected" id="opt-default" onclick="selectMode('default')">
                 <div class="card-icon">✈️</div>
                 <div>
@@ -230,23 +443,31 @@
                 </div>
                 <div style="display:flex; gap:10px;">
                     <button class="ctrl-btn" id="btn-voice" onclick="toggleVoice()">🔊</button>
-                    <button class="ctrl-btn" style="background:#ff3b30; border-color: #ff3b30;" onclick="stopAR()">✕</button>
+                    <button class="ctrl-btn" style="background:#ff3b30; border-color: #ff3b30;"
+                        onclick="stopAR()">✕</button>
                 </div>
             </div>
-            
+
             <div class="arrow-wrap">
-                <svg width="160" height="160" viewBox="0 0 100 100" id="ar-arrow" style="overflow:visible; transition: none;">
+                <svg width="160" height="160" viewBox="0 0 100 100" id="ar-arrow"
+                    style="overflow:visible; transition: none;">
                     <defs>
                         <filter id="glow">
-                            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                            <feGaussianBlur stdDeviation="4" result="coloredBlur" />
                             <feMerge>
-                                <feMergeNode in="coloredBlur"/>
-                                <feMergeNode in="SourceGraphic"/>
+                                <feMergeNode in="coloredBlur" />
+                                <feMergeNode in="SourceGraphic" />
                             </feMerge>
                         </filter>
                     </defs>
-                    <path d="M50 15 L85 85 L50 70 L15 85 Z" fill="#00F3FF" stroke="white" stroke-width="3" filter="url(#glow)"/>
+                    <path d="M50 15 L85 85 L50 70 L15 85 Z" fill="#00F3FF" stroke="white" stroke-width="3"
+                        filter="url(#glow)" />
                 </svg>
+            </div>
+
+            <!-- MINI MAP -->
+            <div id="mini-map-container">
+                <div id="mini-map"></div>
             </div>
         </div>
     </div>
@@ -274,11 +495,13 @@
             navigating: false,
             watchId: null,
             wakeLock: null,
-            
+
             // Suavizado (Lerp)
             currentVisualHeading: 0,
             targetHeading: 0,
-            compassOffset: 0
+            compassOffset: 0,
+
+            miniMap: null // INSTANCIA DEL MINI MAPA
         };
 
         const TXT = {
@@ -341,7 +564,7 @@
             app.lang = app.lang === 'es' ? 'en' : 'es';
             document.getElementById('btn-lang').innerText = app.lang.toUpperCase();
             // Actualizar textos dinámicos si es necesario
-            if(app.mode === 'default') document.getElementById('txt-dest-name').innerText = TXT[app.lang].dest;
+            if (app.mode === 'default') document.getElementById('txt-dest-name').innerText = TXT[app.lang].dest;
         }
 
         // --- MAP LOGIC ---
@@ -350,7 +573,7 @@
             app.markers.forEach(m => m.remove());
             app.markers = [];
             app.points = [];
-            
+
             if (app.mode === 'default') {
                 document.getElementById('manual-tip').style.display = 'none';
                 document.getElementById('txt-dest-name').innerText = TXT[app.lang].dest;
@@ -382,14 +605,14 @@
             if (app.mode !== 'manual') return;
             const c = [e.lngLat.lng, e.lngLat.lat];
             app.points.push(c);
-            
+
             const el = document.createElement('div');
             el.className = 'ctrl-btn'; el.innerText = app.points.length;
             el.style.width = '24px'; el.style.height = '24px'; el.style.fontSize = '12px';
             el.style.background = 'white'; el.style.color = 'black';
-            
+
             app.markers.push(new mapboxgl.Marker(el).setLngLat(c).addTo(map));
-            
+
             if (app.points.length >= 2) plotRoute(app.points);
         });
 
@@ -450,7 +673,7 @@
 
         async function startAR() {
             app.navigating = true;
-            
+
             // Wake Lock (Pantalla encendida)
             try {
                 if ('wakeLock' in navigator) {
@@ -468,41 +691,84 @@
             // Iniciar Loops
             window.addEventListener('deviceorientation', handleOrientation);
             app.watchId = navigator.geolocation.watchPosition(handleGPS, null, { enableHighAccuracy: true, maximumAge: 1000 });
-            
+
+            // INICIAR MINI MAPA
+            initMiniMap();
+
             // Animación Loop (Lerp)
             requestAnimationFrame(renderLoop);
+        }
+
+        function initMiniMap() {
+            if (app.miniMap) app.miniMap.remove();
+
+            app.miniMap = new mapboxgl.Map({
+                container: 'mini-map',
+                style: 'mapbox://styles/mapbox/dark-v11',
+                center: app.route.geometry.coordinates[app.step] || ROUTE_DEF[0],
+                zoom: 15,
+                pitch: 0,
+                interactive: false,
+                attributionControl: false
+            });
+
+            app.miniMap.on('load', () => {
+                if (app.route) {
+                    app.miniMap.addLayer({
+                        id: 'mini-route', type: 'line',
+                        source: { type: 'geojson', data: app.route.geometry },
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: { 'line-color': '#00F3FF', 'line-width': 4 }
+                    });
+
+                    // Marker Propio
+                    const el = document.createElement('div');
+                    el.style.width = '12px'; el.style.height = '12px';
+                    el.style.backgroundColor = '#00F3FF';
+                    el.style.borderRadius = '50%';
+                    el.style.border = '2px solid white';
+                    new mapboxgl.Marker(el).setLngLat(app.miniMap.getCenter()).addTo(app.miniMap);
+                    app.miniMapUserMarker = el; // Ref para moverlo si quisiera, pero moveremos el mapa entero
+                }
+            });
         }
 
         window.stopAR = () => {
             app.navigating = false;
             window.speechSynthesis.cancel();
-            
+
             // Liberar recursos
             if (app.wakeLock) app.wakeLock.release();
             if (app.watchId) navigator.geolocation.clearWatch(app.watchId);
             window.removeEventListener('deviceorientation', handleOrientation);
-            
+
             // Reset UI
             document.getElementById('map-view').classList.remove('hidden');
             document.getElementById('map-view').style.opacity = 1;
             document.getElementById('ar-view').classList.remove('visible');
             app.route = null;
             app.step = 0;
-            
+
+            // Destruir Mini Mapa
+            if (app.miniMap) {
+                app.miniMap.remove();
+                app.miniMap = null;
+            }
+
             // Limpiar ruta visual del mapa
             if (map.getSource('route')) {
                 map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
             }
-            
+
             showLanding();
         };
 
         // 2. Lógica de Orientación y Suavizado
         function handleOrientation(e) {
             // Compatibilidad iOS vs Android
-            let heading = e.webkitCompassHeading || (360 - e.alpha); 
-            if(!heading) heading = 0;
-            
+            let heading = e.webkitCompassHeading || (360 - e.alpha);
+            if (!heading) heading = 0;
+
             // Aquí solo guardamos el offset para usarlo en el loop de render
             app.compassOffset = heading;
         }
@@ -524,17 +790,22 @@
                 target = steps[app.step]; // Actualizar objetivo
             }
 
+            // ACTUALIZAR MINI MAPA
+            if (app.miniMap) {
+                app.miniMap.setCenter([lng, lat]);
+            }
+
             // Calcular hacia dónde debe apuntar la flecha (Bearing Real)
             const targetBearing = bearing(lat, lng, target[1], target[0]);
-            
+
             // El objetivo visual de la flecha es: Bearing Destino - Mi Brújula
             // Guardamos esto globalmente para que el loop de animación lo suavice
             // NOTA: Calculamos el bearing absoluto, el loop restará la brújula
-            app.targetHeading = targetBearing; 
-            
+            app.targetHeading = targetBearing;
+
             // Actualizar UI Texto
             document.getElementById('ar-next').innerText = Math.round(distToTarget) + " m";
-            
+
             // Instrucciones
             let relativeAngle = targetBearing - app.compassOffset;
             // Normalizar a -180 / 180
@@ -547,19 +818,19 @@
             if (distToTarget < 20 && app.step > steps.length - 3) k = "a"; // arrived
 
             const txt = TXT[app.lang].inst[k];
-            if(document.getElementById('ar-instr').innerText !== txt) {
+            if (document.getElementById('ar-instr').innerText !== txt) {
                 document.getElementById('ar-instr').innerText = txt;
-                if(app.voice) speak(txt);
+                if (app.voice) speak(txt);
             }
         }
 
         // 3. Render Loop (Suavizado / Lerp)
         function renderLoop() {
-            if(!app.navigating) return;
+            if (!app.navigating) return;
 
             // Calculamos el ángulo relativo deseado
             let desiredRel = app.targetHeading - app.compassOffset;
-            
+
             // Normalizar giro más corto (evita giros locos 360)
             let diff = desiredRel - app.currentVisualHeading;
             while (diff < -180) diff += 360;
@@ -570,7 +841,13 @@
 
             // Aplicar rotación
             const arrow = document.getElementById('ar-arrow');
-            if(arrow) arrow.style.transform = `rotate(${app.currentVisualHeading}deg)`;
+            if (arrow) arrow.style.transform = `rotate(${app.currentVisualHeading}deg)`;
+
+            // ROTAR MINI MAPA (Head Up)
+            if (app.miniMap) {
+                // Queremos que el mapa gire opuesto a la brújula para que "arriba" sea el frente
+                app.miniMap.setBearing(app.compassOffset);
+            }
 
             requestAnimationFrame(renderLoop);
         }
@@ -583,23 +860,24 @@
             window.speechSynthesis.speak(u);
         }
         function toggleVoice() { app.voice = !app.voice; document.getElementById('btn-voice').innerText = app.voice ? "🔊" : "🔇"; }
-        
+
         // Mate Geográfica
-        function dist(la1, lo1, la2, lo2) { 
-            const R = 6371000; 
-            const dLa = toRad(la2 - la1); 
-            const dLo = toRad(lo2 - lo1); 
-            const a = Math.sin(dLa/2) * Math.sin(dLa/2) + Math.cos(toRad(la1)) * Math.cos(toRad(la2)) * Math.sin(dLo/2) * Math.sin(dLo/2); 
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+        function dist(la1, lo1, la2, lo2) {
+            const R = 6371000;
+            const dLa = toRad(la2 - la1);
+            const dLo = toRad(lo2 - lo1);
+            const a = Math.sin(dLa / 2) * Math.sin(dLa / 2) + Math.cos(toRad(la1)) * Math.cos(toRad(la2)) * Math.sin(dLo / 2) * Math.sin(dLo / 2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
-        function bearing(la1, lo1, la2, lo2) { 
-            const y = Math.sin(toRad(lo2 - lo1)) * Math.cos(toRad(la2)); 
-            const x = Math.cos(toRad(la1)) * Math.sin(toRad(la2)) - Math.sin(toRad(la1)) * Math.cos(toRad(la2)) * Math.cos(toRad(lo2 - lo1)); 
-            return (toDeg(Math.atan2(y, x)) + 360) % 360; 
+        function bearing(la1, lo1, la2, lo2) {
+            const y = Math.sin(toRad(lo2 - lo1)) * Math.cos(toRad(la2));
+            const x = Math.cos(toRad(la1)) * Math.sin(toRad(la2)) - Math.sin(toRad(la1)) * Math.cos(toRad(la2)) * Math.cos(toRad(lo2 - lo1));
+            return (toDeg(Math.atan2(y, x)) + 360) % 360;
         }
         function toRad(d) { return d * Math.PI / 180; }
         function toDeg(r) { return r * 180 / Math.PI; }
 
     </script>
 </body>
+
 </html>
