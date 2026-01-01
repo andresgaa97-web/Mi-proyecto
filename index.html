@@ -27,6 +27,7 @@
             --glass-panel: rgba(10, 10, 18, 0.85);
             --accent-cyan: #00f3ff;
             --accent-red: #ff2a2a;
+            --accent-green: #00ff66;
             --text-main: #ffffff;
             --text-dim: #a0a0b0;
             --font-display: 'Orbitron', sans-serif;
@@ -93,6 +94,35 @@
             align-items: center;
         }
 
+        /* Config / Audio Toolbar */
+        .config-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .icon-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+
+        .icon-btn.active {
+            background: var(--accent-green);
+            color: black;
+            border-color: var(--accent-green);
+        }
+
         .route-controls {
             display: flex;
             flex-direction: column;
@@ -149,7 +179,7 @@
             border: 1px solid rgba(0, 243, 255, 0.3);
         }
 
-        /* Floating Address Cards */
+        /* Waypoint List */
         .waypoint-list {
             margin-top: 5px;
             display: flex;
@@ -353,6 +383,17 @@
             transform: translateX(-50%);
         }
 
+        /* Audio Controls in AR Mode */
+        .ar-controls {
+            position: absolute;
+            top: 120px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
         /* 3D Scene */
         a-scene {
             width: 100%;
@@ -410,6 +451,11 @@
                 <span class="info-pill" id="status-pill">MODO RUTA</span>
             </div>
 
+            <!-- Language / Audio Settings -->
+            <div class="config-toolbar">
+                <button class="icon-btn active" id="btn-lang" onclick="toggleLang()">ES</button>
+            </div>
+
             <div class="route-controls">
                 <div class="control-row">
                     <button class="mode-btn active" id="btn-add-wp" onclick="setMode('waypoint')">+ PARADA</button>
@@ -457,6 +503,11 @@
             </div>
         </div>
 
+        <!-- AR Controls -->
+        <div class="ar-controls">
+            <button class="icon-btn active" id="btn-voice-ar" onclick="toggleVoice()">🔊</button>
+        </div>
+
         <button class="btn-exit" onclick="stopNavigation()">SALIR / FIN</button>
     </div>
 
@@ -466,16 +517,31 @@
 
         <!-- CAMERA -->
         <a-camera gps-camera="minDistance: 1; gpsMinDistance: 1;" rotation-reader>
-            <!-- 3D ARROW -->
-            <a-entity id="arrow-rig" position="0 -0.5 -2.5">
-                <!-- Glowing Core -->
-                <a-cone color="#ff2a2a" height="1.0" radius-bottom="0.3" radius-top="0.0" rotation="-90 0 0"
-                    material="opacity: 0.9; transparent: true; emissive: #ff0000; emissiveIntensity: 0.8">
+            <!-- 3D ARROW RIG (Floating in front of user) -->
+            <!-- Position: 0 (center) -0.5 (below eye) -2 (2 meters forward) -->
+            <a-entity id="arrow-rig" position="0 -0.5 -2">
+
+                <!-- THE ARROW GROUP -->
+                <!-- We rotate this whole group to point the arrow -->
+                <!-- Initially points -Z (Forward) -->
+
+                <!-- Shaft (Cylinder) -->
+                <!-- Rotated 90 on X to lay flat pointing Z -->
+                <a-cylinder color="#00ff66" height="1.0" radius="0.1" rotation="90 0 0" position="0 0 0.5"
+                    material="opacity: 0.9; metalness: 0.5; roughness: 0.2">
+                </a-cylinder>
+
+                <!-- Head (Cone) -->
+                <!-- Rotated -90 on X to point Forward (-Z) -->
+                <a-cone color="#00ff66" height="0.6" radius-bottom="0.25" radius-top="0.01" rotation="-90 0 0"
+                    position="0 0 -0.2" material="opacity: 0.9; metalness: 0.5; roughness: 0.2">
                 </a-cone>
-                <!-- Outer Ring -->
-                <a-ring color="#00f3ff" radius-inner="0.35" radius-outer="0.4" rotation="-90 0 0" position="0 0 0.5"
-                    material="opacity: 0.6; transparent: true; emissive: #00f3ff; emissiveIntensity: 0.5">
+
+                <!-- Glow Effect (Optional Ring at base) -->
+                <a-ring color="#00ff66" radius-inner="0.3" radius-outer="0.35" rotation="-90 0 0" position="0 0 1"
+                    material="opacity: 0.5; transparent: true; emissive: #00ff66; emissiveIntensity: 1">
                 </a-ring>
+
             </a-entity>
         </a-camera>
 
@@ -491,21 +557,36 @@
         // STATE
         let app = {
             mode: 'waypoint', // 'waypoint' or 'dest'
-            start: null, // [lng, lat]
-            waypoints: [], // Array of [lng, lat]
-            dest: null, // [lng, lat]
+            start: null,
+            waypoints: [],
+            dest: null,
             routeGeoJSON: null,
             navigating: false,
-            currentStep: 0
+            currentStep: 0,
+            lang: 'es', // 'es' or 'en'
+            voice: true
+        };
+
+        // TEXT DICTIONARY
+        const txt = {
+            es: {
+                add: "+ PARADA", dest: "DESTINO 🏁", pillW: "AGREGAR PARADAS", pillD: "FIJAR DESTINO FINAL",
+                start: "INICIAR RUTA AR", go: "Continuar", left: "Gira izquierda", right: "Gira derecha",
+                arrive: "¡Has llegado!", straight: "Sigue recto"
+            },
+            en: {
+                add: "+ WAYPOINT", dest: "DESTINATION 🏁", pillW: "ADD WAYPOINTS", pillD: "SET DESTINATION",
+                start: "START AR ROUTE", go: "Continue", left: "Turn left", right: "Turn right",
+                arrive: "You have arrived!", straight: "Go straight"
+            }
         };
 
         // SETUP MAP
         const map = new mapboxgl.Map({
             container: 'map',
-            style: 'mapbox://styles/mapbox/dark-v11', // Dark cleaner style
-            center: [-110.3626, 24.0726], // La Paz Airport default
-            zoom: 13,
-            attributionControl: false
+            style: 'mapbox://styles/mapbox/dark-v11',
+            center: [-110.3626, 24.0726], // La Paz
+            zoom: 13, attributionControl: false
         });
 
         // UI ELEMENTS
@@ -521,53 +602,61 @@
             arrowRig: document.getElementById('arrow-rig'),
             worldPoints: document.getElementById('world-points'),
             hudCompass: document.getElementById('hud-compass'),
-            loader: document.getElementById('loader')
+            loader: document.getElementById('loader'),
+            btnLang: document.getElementById('btn-lang'),
+            btnVoice: document.getElementById('btn-voice-ar'),
+            btnAdd: document.getElementById('btn-add-wp'),
+            btnDest: document.getElementById('btn-set-dest')
         };
 
         // --- MAP EVENTS & LOGIC ---
-
-        // On Load
         map.on('load', () => {
-            // Init User Location
             navigator.geolocation.getCurrentPosition(pos => {
                 const userLoc = [pos.coords.longitude, pos.coords.latitude];
                 app.start = userLoc;
 
-                // If URL has route, load it
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.has('route')) {
                     loadRouteFromURL(urlParams.get('route'));
                 } else {
-                    // Default behavior
                     new mapboxgl.Marker({ color: '#00f3ff' }).setLngLat(userLoc).addTo(map);
                     map.flyTo({ center: userLoc, zoom: 15 });
                     els.loader.style.opacity = 0;
                     setTimeout(() => els.loader.style.display = 'none', 500);
                 }
             }, err => {
-                alert("Se requiere GPS. Actívalo.");
-                els.loader.style.display = 'none';
+                alert("GPS Requerido / GPS Required"); els.loader.style.display = 'none';
             }, { enableHighAccuracy: true });
         });
 
-        // Pin Movement Interactivity
         map.on('movestart', () => { els.pinIcon.parentNode.classList.add('pin-lift'); });
         map.on('moveend', () => { els.pinIcon.parentNode.classList.remove('pin-lift'); });
-
-        // Add Point Helper
-        map.on('click', (e) => {
-            // We use the center pin logic usually, but click also works for desktop testing
-            // logic below is for the Button Actions using Center Pin
-        });
 
         // --- CORE FUNCTIONS ---
 
         function setMode(m) {
             app.mode = m;
-            document.getElementById('btn-add-wp').classList.toggle('active', m === 'waypoint');
-            document.getElementById('btn-set-dest').classList.toggle('active', m === 'dest');
-            els.statusPill.innerText = m === 'waypoint' ? "AGREGAR PARADAS" : "FIJAR DESTINO FINAL";
+            els.btnAdd.classList.toggle('active', m === 'waypoint');
+            els.btnDest.classList.toggle('active', m === 'dest');
+            els.statusPill.innerText = app.lang === 'es' ? (m === 'waypoint' ? txt.es.pillW : txt.es.pillD) : (m === 'waypoint' ? txt.en.pillW : txt.en.pillD);
             els.pinIcon.style.filter = m === 'dest' ? 'hue-rotate(140deg) brightness(1.2)' : 'none';
+        }
+
+        function toggleLang() {
+            app.lang = app.lang === 'es' ? 'en' : 'es';
+            els.btnLang.innerText = app.lang.toUpperCase();
+            // Update UI text
+            els.btnAdd.innerText = txt[app.lang].add;
+            els.btnDest.innerText = txt[app.lang].dest;
+            if (!els.btnGo.disabled) els.btnGo.innerText = txt[app.lang].start;
+            setMode(app.mode);
+        }
+
+        function toggleVoice() {
+            app.voice = !app.voice;
+            els.btnVoice.innerText = app.voice ? "🔊" : "🔇";
+            els.btnVoice.classList.toggle('active', app.voice);
+            if (app.voice) speak("Audio activado");
         }
 
         async function addCurrentCenterAsPoint() {
@@ -581,57 +670,38 @@
             } else if (app.mode === 'dest') {
                 app.dest = { coords, name };
                 renderList();
-                // Dest usually ends the flow, try calc route
                 calculateRoute();
             }
         }
 
-        // We bind the "Map Click" logic effectively to the buttons or specific interaction
-        // For this mobile-first vibe, let's make the Map Pin the cursor.
-        // User pans map, then clicks the Active Button to "Confirm Position"
-        // Let's modify the buttons to trigger the add:
-
         document.getElementById('btn-add-wp').addEventListener('click', () => {
-            if (app.mode === 'waypoint') addCurrentCenterAsPoint(); // If already active, click adds
-            else setMode('waypoint');
+            if (app.mode === 'waypoint') addCurrentCenterAsPoint(); else setMode('waypoint');
         });
-
         document.getElementById('btn-set-dest').addEventListener('click', () => {
-            if (app.mode === 'dest') addCurrentCenterAsPoint();
-            else setMode('dest');
+            if (app.mode === 'dest') addCurrentCenterAsPoint(); else setMode('dest');
         });
 
         function setStartToAirport() {
-            // La Paz Airport
             const lap = [-110.3626, 24.0726];
             app.start = lap;
             map.flyTo({ center: lap, zoom: 14 });
-            // Add marker
             new mapboxgl.Marker({ color: '#aaaaaa' }).setLngLat(lap).addTo(map);
-            alert("Inicio fijado en Aeropuerto La Paz. Ahora define la ruta.");
         }
 
         function clearRoute() {
-            app.waypoints = [];
-            app.dest = null;
-            app.routeGeoJSON = null;
+            app.waypoints = []; app.dest = null; app.routeGeoJSON = null;
             if (map.getSource('route')) map.removeLayer('route') && map.removeSource('route');
-            renderList();
-            els.btnGo.disabled = true;
+            renderList(); els.btnGo.disabled = true;
         }
 
         function renderList() {
             els.wpList.innerHTML = '';
-
-            // Render Waypoints
             app.waypoints.forEach((wp, i) => {
                 const div = document.createElement('div');
                 div.className = 'wp-tag center';
                 div.innerHTML = `<span>${i + 1}. ${wp.name}</span> <button class="del-wp" onclick="removeWp(${i})">x</button>`;
                 els.wpList.appendChild(div);
             });
-
-            // Render Dest
             if (app.dest) {
                 const div = document.createElement('div');
                 div.className = 'wp-tag dest';
@@ -643,111 +713,77 @@
         window.removeWp = (i) => { app.waypoints.splice(i, 1); renderList(); calculateRoute(); };
         window.removeDest = () => { app.dest = null; renderList(); els.btnGo.disabled = true; };
 
-        // --- ROUTING ENGINE ---
+        // --- ROUTING ---
 
         async function calculateRoute() {
             if (!app.start || !app.dest) return;
-
-            // Construct Coordinate String: start;wp1;wp2;dest
             let coords = [app.start];
             app.waypoints.forEach(wp => coords.push(wp.coords));
             coords.push(app.dest.coords);
-
             const coordString = coords.map(c => c.join(',')).join(';');
             const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordString}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
 
             try {
                 const req = await fetch(url);
                 const json = await req.json();
-                if (!json.routes || json.routes.length === 0) return alert("No se encontró ruta.");
+                if (!json.routes || json.routes.length === 0) return alert("Error de ruta");
 
                 const route = json.routes[0];
                 app.routeGeoJSON = route.geometry;
-                app.fullSteps = route.legs.flatMap(l => l.steps); // All steps flattened
 
-                // Draw on Map
-                if (map.getSource('route')) {
-                    map.getSource('route').setData(app.routeGeoJSON);
-                } else {
-                    map.addLayer({
-                        id: 'route',
-                        type: 'line',
-                        source: { type: 'geojson', data: app.routeGeoJSON },
-                        layout: { 'line-join': 'round', 'line-cap': 'round' },
-                        paint: { 'line-color': '#00f3ff', 'line-width': 5, 'line-opacity': 0.8 }
-                    });
-                }
+                if (map.getSource('route')) map.getSource('route').setData(app.routeGeoJSON);
+                else map.addLayer({
+                    id: 'route', type: 'line', source: { type: 'geojson', data: app.routeGeoJSON },
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': '#00f3ff', 'line-width': 5, 'line-opacity': 0.8 }
+                });
 
-                // Enable Go
                 els.btnGo.disabled = false;
-                els.btnGo.innerText = `INICIAR (${Math.round(route.distance / 1000)}km)`;
+                els.btnGo.innerText = `${txt[app.lang].start} - ${Math.round(route.distance / 1000)}km`;
 
             } catch (e) { console.error(e); }
         }
 
         async function getAddrName(c) {
-            const u = `https://api.mapbox.com/geocoding/v5/mapbox.places/${c[0]},${c[1]}.json?types=poi,address&access_token=${MAPBOX_TOKEN}`;
-            const r = await fetch(u);
-            const d = await r.json();
-            return d.features[0]?.text || "Punto";
+            try {
+                const u = `https://api.mapbox.com/geocoding/v5/mapbox.places/${c[0]},${c[1]}.json?types=poi,address&access_token=${MAPBOX_TOKEN}`;
+                const r = await fetch(u); const d = await r.json(); return d.features[0]?.text || "Punto";
+            } catch { return "Punto"; }
         }
 
         // --- SHARING ---
         window.shareRoute = () => {
-            if (!app.start || !app.dest) return alert("Define una ruta completa primero.");
-
-            // Encode: start|wp1|wp2|dest
-            // We only really need WPs and Dest. Start is usually client's GPS?
-            // User request: "Client follows MY route". So assume Start is Airport (fixed) or Client GPS.
-            // Let's encode all points. 
-            const data = {
-                s: app.start,
-                w: app.waypoints.map(w => w.coords),
-                d: app.dest.coords
-            };
-            const str = btoa(JSON.stringify(data)); // Simple base64 encoding
+            if (!app.start || !app.dest) return alert("Ruta incompleta");
+            const data = { s: app.start, w: app.waypoints.map(w => w.coords), d: app.dest.coords };
+            const str = btoa(JSON.stringify(data));
             const url = `${window.location.origin}${window.location.pathname}?route=${str}`;
-
-            navigator.clipboard.writeText(url).then(() => alert("Enlace copiado al portapapeles. Envíalo a tu cliente."));
+            navigator.clipboard.writeText(url).then(() => alert("URL Copiada!"));
         };
 
         function loadRouteFromURL(str) {
             try {
                 const data = JSON.parse(atob(str));
                 app.start = data.s;
-                app.dest = { coords: data.d, name: "Destino Compartido" };
-                app.waypoints = data.w.map(c => ({ coords: c, name: "Punto Vía" }));
-
-                // Set text
-                els.loader.innerHTML = '<div class="spinner"></div><p style="color:white; margin-top:10px;">CARGANDO RUTA DEL ANFITRIÓN...</p>';
-
-                // Render
+                app.dest = { coords: data.d, name: "Destino" };
+                app.waypoints = data.w.map(c => ({ coords: c, name: "Punto" }));
+                els.loader.innerHTML = '<div class="spinner"></div><p style="color:white; margin-top:10px;">CARGANDO RUTA...</p>';
                 renderList();
-                calculateRoute().then(() => {
-                    els.loader.style.display = 'none';
-                    // Auto start? Maybe wait for user to click Go
-                    map.flyTo({ center: app.start, zoom: 14 });
-                });
-            } catch (e) {
-                console.error(e);
-                alert("Error cargando ruta compartida.");
-                els.loader.style.display = 'none';
-            }
+                calculateRoute().then(() => { els.loader.style.display = 'none'; });
+            } catch (e) { els.loader.style.display = 'none'; alert("Error URL"); }
         }
 
-
-        // --- AR NAVIGATION MODE ---
+        // --- AR & AUDIO ---
 
         window.startNavigation = () => {
             if (!app.routeGeoJSON) return;
             app.navigating = true;
-
-            // Switch UI
             els.mapView.style.opacity = 0;
+            // Ask for orientation permission on iOS
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(r => { if (r != 'granted') alert("Permiso denegado"); }).catch(console.error);
+            }
+            speak(app.lang === 'es' ? "Iniciando navegación. Sigue la flecha." : "Starting navigation. Follow the arrow.");
             setTimeout(() => { els.mapView.style.display = 'none'; els.arUI.style.display = 'block'; }, 500);
-
-            // Setup AR Scene Points
-            setupARPoints();
             startARLoop();
         };
 
@@ -756,111 +792,82 @@
             els.arUI.style.display = 'none';
             els.mapView.style.display = 'flex';
             els.mapView.style.opacity = 1;
-            // Clean AR
-            els.worldPoints.innerHTML = '';
         };
 
-        function setupARPoints() {
-            els.worldPoints.innerHTML = '';
-            // Place blue dots every ~20 meters along the line
-            // Simplified: just iterate coords
-            const path = app.routeGeoJSON.coordinates;
-            path.forEach((c, i) => {
-                if (i % 2 !== 0) return; // Skip some for perf
-                const el = document.createElement('a-entity');
-                el.setAttribute('gps-new-entity-place', `latitude: ${c[1]}; longitude: ${c[0]}`);
-                // Blue glowing orb
-                el.innerHTML = `<a-sphere color="#00f3ff" radius="0.5" opacity="0.6" position="0 0 0"></a-sphere>`;
-                els.worldPoints.appendChild(el);
-            });
-        }
-
-        // --- AR LOOP & COMPASS LOGIC ---
-
         let lastDeviceHeading = 0;
+        let lastSpeakTime = 0;
+        let lastInstruction = "";
 
         function startARLoop() {
-            // Setup Compass Listener
             window.addEventListener('deviceorientation', (e) => {
                 let heading = 0;
                 if (e.webkitCompassHeading) heading = e.webkitCompassHeading;
                 else if (e.alpha) heading = 360 - e.alpha;
 
-                // Simple Low Pass Filter to smooth jitter
-                // y += alpha * (x - y)
                 const alpha = 0.1;
-                // Handle 359->0 wrap
                 let diff = heading - lastDeviceHeading;
-                if (diff < -180) diff += 360;
-                if (diff > 180) diff -= 360;
-
+                if (diff < -180) diff += 360; if (diff > 180) diff -= 360;
                 lastDeviceHeading += diff * alpha;
-                // Normalize
                 lastDeviceHeading = (lastDeviceHeading + 360) % 360;
             });
 
-            // Watch Position
             navigator.geolocation.watchPosition(pos => {
                 if (!app.navigating) return;
 
-                const userLat = pos.coords.latitude;
-                const userLng = pos.coords.longitude;
+                const userLat = pos.coords.latitude; const userLng = pos.coords.longitude;
                 const path = app.routeGeoJSON.coordinates;
-
-                // Find closest point on path (Basic approach: Distance to next target step)
-                // We assume sequential movement.
-                // Target is app.currentStep index in path
                 let target = path[app.currentStep];
 
-                // Calc dist
                 const d = distInMeters(userLat, userLng, target[1], target[0]);
-
                 els.arDist.innerHTML = Math.round(d) + '<span class="nav-unit">m</span>';
 
-                // If close, advance
+                // Check arrival at step
                 if (d < 15) {
                     if (app.currentStep < path.length - 1) {
                         app.currentStep++;
-                        playSound('ping'); // Optional Feedback
+                        // Sound feedback could go here
                     } else {
-                        els.arInstr.innerText = "¡Has llegado!";
+                        const msg = txt[app.lang].arrive;
+                        els.arInstr.innerText = msg;
+                        speak(msg);
                     }
                 }
 
-                // ARROW ROTATION
-                // Bearing to target
+                // Arrow Rotation
                 const bearing = calcBearing(userLat, userLng, target[1], target[0]);
-
-                // HUD Arrow Rotation: relative angle
-                // If I embrace North (0), and target is East (90), bearing is 90.
-                // If I face North (0), arrow should point Right (90).
-                // If I face East (90), Device=90. relative = 90 - 90 = 0 (Center, aka Straight).
-
                 let relative = bearing - lastDeviceHeading;
-
-                // Update 3D Arrow (Rotation Y in radians)
-                // A-Frame rotation is counter-clockwise positive in some contexts, but usually Y is standard left-hand rule?
-                // Actually in A-Frame/ThreeJS:
-                // Rotation Y+ is turning Left? No, Y axis is vertical.
-                // We convert degrees to radians.
-                // Visual adjustment: The model usually points -Z (forward).
-                // We rotate it around Y.
-                // -relative * (Math.PI / 180) usually works for HUD.
-
                 els.arrowRig.object3D.rotation.y = -relative * (Math.PI / 180);
-
-                // HUD Compass
                 els.hudCompass.style.transform = `rotate(${-relative}deg)`;
 
-                // Text Instruction
-                if (Math.abs(relative) < 20) els.arInstr.innerText = "Continúa recto";
-                else if (relative < 0) els.arInstr.innerText = "Gira izquierda";
-                else els.arInstr.innerText = "Gira derecha";
+                // Instructions & Audio
+                let msg = "";
+                let threshold = 30; // degrees
+                if (Math.abs(relative) < threshold) msg = txt[app.lang].straight;
+                else if (relative < 0) msg = txt[app.lang].left;
+                else msg = txt[app.lang].right;
+
+                els.arInstr.innerText = msg;
+
+                // Smart Speaking (Only if instruction changes or significant time passes)
+                const now = Date.now();
+                if (msg !== lastInstruction && (now - lastSpeakTime > 5000)) {
+                    speak(msg);
+                    lastInstruction = msg;
+                    lastSpeakTime = now;
+                }
 
             }, err => console.error(err), { enableHighAccuracy: true, maximumAge: 0 });
         }
 
-        // UTILS
+        function speak(text) {
+            if (!app.voice) return;
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = app.lang === 'es' ? 'es-MX' : 'en-US';
+            u.rate = 1.0;
+            window.speechSynthesis.speak(u);
+        }
+
         function distInMeters(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
             const φ1 = lat1 * Math.PI / 180;
@@ -882,11 +889,6 @@
             brng = brng * (180 / Math.PI);
             return (brng + 360) % 360;
         }
-
-        function playSound(type) {
-            // Simple beep placeholder 
-        }
-
     </script>
 </body>
 
