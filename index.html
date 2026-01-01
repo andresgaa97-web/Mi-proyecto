@@ -486,13 +486,13 @@
                     <button class="mode-btn active" id="btn-add-wp" onclick="setMode('waypoint')">+ PARADA</button>
                     <button class="mode-btn special" id="btn-set-dest" onclick="setMode('dest')">DESTINO 🏁</button>
                 </div>
-                <!-- Action Buttons: Reset Default is Key -->
+                <!-- Action Buttons: Clear & Location -->
                 <div class="control-row">
-                    <button class="mode-btn" onclick="loadDefaultRoute()"
-                        style="font-size:10px; opacity:0.9; background:#004444; border-color:#008888;">🔄 RUTA
-                        DEFAULT</button>
+                    <button class="mode-btn" onclick="setToCurrentLocation()"
+                        style="font-size:10px; opacity:0.9; background:#004444; border-color:#008888;">� MI
+                        UBICACIÓN</button>
                     <button class="mode-btn" onclick="clearRoute()"
-                        style="font-size:10px; opacity:0.6; background:#333;">🗑️ LIMPIAR</button>
+                        style="font-size:10px; opacity:0.6; background:#333;">🗑️ LIMPIAR RUTA</button>
                 </div>
             </div>
 
@@ -549,21 +549,22 @@
         const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
         mapboxgl.accessToken = MAPBOX_TOKEN;
 
-        // --- DEFAULT ROUTE CONFIG (Google Maps Link Match) ---
-        // Route: Airport -> Highway North -> LEFT at Chametla Junction -> West on Hwy 1 -> Campestre Maranatha
-        // https://maps.app.goo.gl/N9G6nByzrywwNm8o7
+        // --- DEFAULT ROUTE CONFIG (Línea Roja Estricta) ---
+        // Se han añadido múltiples puntos intermedios (waypoints) sobre la carretera principal
+        // para OBLIGAR al mapa a seguir la línea roja exacta y no tomar atajos por calles internas.
         const DEFAULT_ROUTE = {
-            s: [-110.3626, 24.0726], // Start: La Paz Airport
+            s: [-110.367559, 24.076169], // Inicio: Aeropuerto
             w: [
-                [-110.3605, 24.0820], // Exit Airport North
-                [-110.3560, 24.0950], // Highway North (Before Junction)
-                [-110.3533, 24.1011], // CRITICAL: The Junction (Turn Left/West)
-                [-110.3650, 24.1000], // Passing Chametla Entrance (Stay on Hwy 1)
-                [-110.3850, 24.0950], // Passing El Centenario limit
-                [-110.3950, 24.0930]  // Approaching Campestre
+                [-110.3608, 24.0825], // 1. Subiendo por Carretera al Norte
+                [-110.369399, 24.077850], // 2. Seguir derecho Norte
+                [-110.3550, 24.0970], // 3. Aproximando cruce
+                [-110.366575, 24.103669], // 4. PUNTO CLAVE: Intersección (Giro Izquierda)
+                [-110.365286, 24.106276], // 5. Ya en Carretera Oeste (evitar entrar a Chametla)
+                [-110.382632, 24.099169], // 6. Seguir derecho por carretera principal
+                [-110.393127, 24.097770]  // 7. Preparar giro final
             ],
-            d: [-110.4060, 24.0915], // Dest: Campestre Maranatha Area
-            dn: "Campestre Maranatha"
+            d: [-110.3845, 24.0950], // Destino final exacto (según imagen roja)
+            dn: "Ubicación Exacta"
         };
 
         let app = {
@@ -609,19 +610,44 @@
         };
 
         map.on('load', () => {
-            // 1. Try to load Route from URL
+            // 1. Check for URL route
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('route')) {
                 loadRouteFromURL(urlParams.get('route'));
             } else {
-                // 2. No URL? Load DEFAULT ROUTE Automatically
-                loadDefaultRoute();
-            }
+                // DEFAULT START: AIRPORT
+                const airport = [-110.3626, 24.0726];
+                app.start = airport;
+                map.easeTo({ center: airport, zoom: 14 });
 
-            // 3. User GPS (optional background update, don't override start unless requested)
-            navigator.geolocation.getCurrentPosition(pos => {
-                // Just center map initially if user is far away? No, keep it on the route.
-            }, err => console.log("GPS Peding"), { enableHighAccuracy: true });
+                // Add Airport Marker
+                new mapboxgl.Marker({ color: '#aaaaaa' }).setLngLat(airport).addTo(map);
+            }
+        });
+
+        // --- INTERACTIVE MAP CLICK (MANUAL ROUTE SELECTION) ---
+        map.on('click', (e) => {
+            const coords = [e.lngLat.lng, e.lngLat.lat];
+
+            // Visual Marker
+            const color = app.mode === 'dest' ? '#ff2a2a' : '#00f3ff';
+            new mapboxgl.Marker({ color: color, scale: 0.8 }).setLngLat(coords).addTo(map);
+
+            if (app.mode === 'waypoint') {
+                // Add Waypoint
+                getAddrName(coords).then(name => {
+                    app.waypoints.push({ coords, name });
+                    renderList();
+                    calculateRoute(); // Auto-recalc
+                });
+            } else if (app.mode === 'dest') {
+                // Set Destination
+                getAddrName(coords).then(name => {
+                    app.dest = { coords, name };
+                    renderList();
+                    calculateRoute(); // Auto-recalc
+                });
+            }
         });
 
         map.on('movestart', () => { els.pinIcon.parentNode.classList.add('pin-lift'); });
@@ -662,26 +688,26 @@
         document.getElementById('btn-add-wp').addEventListener('click', () => { if (app.mode === 'waypoint') addCurrentCenterAsPoint(); else setMode('waypoint'); });
         document.getElementById('btn-set-dest').addEventListener('click', () => { if (app.mode === 'dest') addCurrentCenterAsPoint(); else setMode('dest'); });
 
-        function setStartToAirport() {
-            const lap = [-110.3626, 24.0726]; app.start = lap; map.flyTo({ center: lap, zoom: 14 });
-            new mapboxgl.Marker({ color: '#aaaaaa' }).setLngLat(lap).addTo(map);
-        }
-
-        // --- DEFAULT ROUTE LOADER ---
-        window.loadDefaultRoute = () => {
-            app.start = DEFAULT_ROUTE.s;
-            app.waypoints = DEFAULT_ROUTE.w.map(c => ({ coords: c, name: "Punto Vía" }));
-            app.dest = { coords: DEFAULT_ROUTE.d, name: DEFAULT_ROUTE.dn };
+        // --- GPS TO CURRENT LOCATION ---
+        window.setToCurrentLocation = () => {
+            if (!navigator.geolocation) return alert("GPS no soportado");
 
             els.loader.style.display = 'block';
             els.loader.style.opacity = 1;
-            els.loader.innerHTML = '<div class="spinner"></div><p style="color:white; margin-top:10px;">CARGANDO RUTA PREDEFINIDA...</p>';
+            els.loader.innerHTML = '<div class="spinner"></div><p style="color:white;">BUSCANDO GPS...</p>';
 
-            renderList();
-            calculateRoute().then(() => {
-                map.flyTo({ center: app.start, zoom: 13 });
-                setTimeout(() => { els.loader.style.opacity = 0; setTimeout(() => els.loader.style.display = 'none', 500); }, 500);
-            });
+            navigator.geolocation.getCurrentPosition(pos => {
+                const user = [pos.coords.longitude, pos.coords.latitude];
+                app.start = user; // Reset start to here
+                map.flyTo({ center: user, zoom: 15 });
+                new mapboxgl.Marker({ color: '#00ff00' }).setLngLat(user).addTo(map);
+
+                els.loader.style.opacity = 0;
+                setTimeout(() => els.loader.style.display = 'none', 500);
+            }, err => {
+                alert("Error GPS: " + err.message);
+                els.loader.style.display = 'none';
+            }, { enableHighAccuracy: true });
         };
 
         function clearRoute() {
