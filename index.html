@@ -319,7 +319,7 @@
     <!-- LOADING -->
     <div id="loading-screen">
         <div class="logo-container" style="width:80px; height:80px; margin-bottom:20px;">
-            <img src="logo.jpeg" class="logo-img" style="width:70px; height:70px;">
+            <img src="logo.png" class="logo-img" style="width:70px; height:70px;" alt="Logo">
         </div>
         <div class="loader"></div>
         <p style="margin-top:20px; font-weight:600; letter-spacing:2px; font-size:12px;">INICIANDO CONCIERGE...</p>
@@ -329,7 +329,7 @@
     <div id="map-view">
         <div class="header">
             <div class="logo-container">
-                <img src="logo.jpeg" class="app-logo logo-img" alt="Logo">
+                <img src="logo.png" class="app-logo logo-img" alt="Logo">
             </div>
             <div class="brand-text">
                 <h1>BAJASTAY</h1>
@@ -383,22 +383,41 @@
 
             <!-- 2D Directional Arrow -->
             <div class="hud-arrow-container">
-                <svg class="hud-arrow" id="arrow-icon" viewBox="0 0 24 24">
-                    <path d="M12 2L2 22L12 18L22 22L12 2Z" />
+                <svg class="hud-arrow" id="arrow-icon" viewBox="0 0 100 100" style="overflow:visible;">
+                    <!-- Drop Shadow -->
+                    <filter id="dropshadow" height="130%">
+                        <feGaussianBlur in="SourceAlpha" stdDeviation="4" />
+                        <feOffset dx="0" dy="5" result="offsetblur" />
+                        <feComponentTransfer>
+                            <feFuncA type="linear" slope="0.5" />
+                        </feComponentTransfer>
+                        <feMerge>
+                            <feMergeNode />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+
+                    <g filter="url(#dropshadow)">
+                        <!-- Depth/Side (Darker) -->
+                        <path d="M50 15 L85 85 L50 70 L15 85 Z" fill="#005f6b" transform="translate(0, 8)" />
+                        <!-- Top Face (Bright) -->
+                        <path d="M50 15 L85 85 L50 70 L15 85 Z" fill="#00F3FF" stroke="white" stroke-width="2" />
+                    </g>
                 </svg>
             </div>
         </div>
     </div>
 
     <script>
-        // --- CONFIGURACIÓN ---
+        // CONFIG
         const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
         mapboxgl.accessToken = MAPBOX_TOKEN;
 
-        // RUTA FIJA (Hardcoded)
-        // Destino: Airbnb
+        // FIXED ROUTE CONFIG (Updated from Google Maps Link)
+        // https://maps.app.goo.gl/3RB2QTL9kmE5mKiPA
         const DESTINATION = { lng: -110.392168, lat: 24.095156, name: "BajaStay Airbnb" };
-        // Waypoint: Punto Intermedio Obligatorio
+
+        // Punto Intermedio Clave (Campestre Cut-off)
         const WAYPOINT = { lng: -110.393072, lat: 24.097741 };
 
         // --- ESTADO DE LA APP ---
