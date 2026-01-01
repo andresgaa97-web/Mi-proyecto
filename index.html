@@ -460,7 +460,12 @@
             <!-- HEADER WITH LOGO -->
             <div class="header-title">
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <img src="./logo.png" class="app-logo" alt="Logo">
+                    <img src="logo.png" class="app-logo" alt="BajaStay Logo" id="main-logo"
+                        onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='flex';">
+                    <div id="logo-fallback"
+                        style="display:none; width:40px; height:40px; background:white; border-radius:50%; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#ff6b35; border:2px solid var(--accent-cyan); box-shadow: 0 0 10px rgba(0, 243, 255, 0.5);">
+                        BS
+                    </div>
                     <div>
                         <div style="line-height:1; font-weight:900;">BAJASTAY</div>
                         <div style="font-size:8px; opacity:0.7; letter-spacing:3px;">NAVEGACIÓN AR</div>
@@ -542,22 +547,23 @@
         const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
         mapboxgl.accessToken = MAPBOX_TOKEN;
 
-        // --- DEFAULT ROUTE CONFIG (Corrected to User Red Line) ---
-        // 1. Airport [-110.3626, 24.0726]
-        // 2. Head North on Transpeninsular Hwy 1
-        // 3. Turn LEFT (West) at Intersection of Hwy 1 & Hwy to Chametla (Approx 3km North)
-        // 4. Pass El Zacatal on left
-        // 5. Turn LEFT (South) into Chunique area
+        // --- DEFAULT ROUTE CONFIG (Optimized to Match User's Red Line) ---
+        // Based on satellite image with 3 red circles marking critical waypoints:
+        // Circle 1: Airport exit to highway (Northwest)
+        // Circle 2: Critical LEFT turn intersection (North-center) 
+        // Circle 3: Entry into Chunique/El Centenario (West)
         const DEFAULT_ROUTE = {
-            s: [-110.3626, 24.0726], // Start: LAP Airport
+            s: [-110.3626, 24.0726],  // Start: La Paz International Airport (LAP)
             w: [
-                [-110.3600, 24.0850], // Force North Highway
-                [-110.3533, 24.1011], // INTERSECTION: Turn Left Here (West)
-                [-110.3650, 24.1008], // Along Chametla Main Rd (West)
-                [-110.3780, 24.0980]  // Approaching Final Turn
+                [-110.3610, 24.0800],  // Circle 1: Airport exit, heading north
+                [-110.3570, 24.0920],  // Northbound on Transpeninsular Highway
+                [-110.3533, 24.1011],  // Circle 2: CRITICAL LEFT TURN (West toward Chametla)
+                [-110.3620, 24.1015],  // West on Chametla access road
+                [-110.3720, 24.0995],  // Circle 3: Approaching Chunique turn
+                [-110.3790, 24.0970]   // Final approach to destination
             ],
-            d: [-110.3805, 24.0950], // DEST: Chunique Residential
-            dn: "Airbnb Chunique"
+            d: [-110.3815, 24.0955],  // Destination: Chunique, El Centenario, B.C.S.
+            dn: "Casa Chunique"
         };
 
         let app = {
