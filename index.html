@@ -85,106 +85,175 @@
             opacity: 1;
         }
 
-        /* === HEADER === */
+        /* === HEADER (Premium Upgrade) === */
         .header {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            padding: 20px 20px 60px 20px;
-            /* Extra padding for gradient */
-            background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0) 100%);
-            z-index: 200;
+            padding: 25px 25px 80px 25px;
+            /* Deep gradient space */
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0) 100%);
+            z-index: 500;
+            /* High z-index for visibility */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            /* Spread for controls */
+            pointer-events: none;
+            /* Let clicks pass through empty space */
+        }
+
+        .header-content {
             display: flex;
             align-items: center;
             gap: 15px;
+            pointer-events: auto;
         }
 
         .logo-container {
-            width: 50px;
-            height: 50px;
-            background: white;
-            border-radius: 12px;
+            width: 54px;
+            height: 54px;
+            min-width: 54px;
+            /* CRITICAL FOR MOBILE */
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 15px rgba(0, 243, 255, 0.3);
-            flex-shrink: 0;
+            box-shadow: 0 8px 32px rgba(0, 243, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .logo-img {
-            width: 44px;
-            height: 44px;
+            width: 48px;
+            height: 48px;
             object-fit: contain;
+            display: block;
+            /* Remove inline spacing */
         }
 
         .brand-text h1 {
             margin: 0;
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 800;
-            letter-spacing: 1px;
+            letter-spacing: -0.5px;
             line-height: 1;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }
 
         .brand-text p {
             margin: 0;
-            font-size: 11px;
-            opacity: 0.7;
+            font-size: 10px;
+            font-weight: 600;
+            opacity: 0.9;
             letter-spacing: 2px;
             text-transform: uppercase;
-            margin-top: 3px;
+            margin-top: 4px;
             color: var(--accent);
         }
 
-        /* === BOTTOM CARD === */
-        .bottom-card {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: var(--glass);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px 20px 0 0;
-            padding: 25px;
-            z-index: 200;
-            transform: translateY(0);
-            transition: transform 0.3s;
+        /* === CONTROLS (Lang & Audio) === */
+        .controls-area {
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
         }
 
-        .trip-info {
+        .ctl-btn {
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ctl-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .ctl-btn.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(0, 243, 255, 0.1);
+        }
+
+        /* === BOTTOM CARD (Floating) === */
+        .bottom-card {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            right: 20px;
+            width: auto;
+            /* Floating style */
+            background: rgba(15, 15, 15, 0.85);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            /* iOS support */
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 24px;
+            z-index: 200;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            transform: translateY(0);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .trip-header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-end;
+            align-items: center;
             margin-bottom: 20px;
         }
 
-        .trip-dest {
-            font-size: 12px;
-            color: #888;
-            text-transform: uppercase;
+        .trip-label {
+            font-size: 11px;
+            color: #aaa;
             font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
 
-        .trip-title {
-            font-size: 22px;
+        .trip-dest-name {
+            font-size: 20px;
             font-weight: 700;
             margin-top: 4px;
+            color: white;
         }
 
-        .trip-meta {
+        .trip-stats {
+            display: flex;
             text-align: right;
+            gap: 15px;
         }
 
-        .trip-time {
-            font-size: 24px;
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-val {
+            font-size: 20px;
             font-weight: 800;
             color: var(--accent);
+            line-height: 1;
         }
 
-        .trip-dist {
-            font-size: 13px;
-            opacity: 0.7;
+        .stat-unit {
+            font-size: 11px;
+            color: #888;
+            font-weight: 500;
+            margin-top: 2px;
         }
 
         .btn-primary {
@@ -193,23 +262,26 @@
             color: black;
             border: none;
             padding: 16px;
-            border-radius: 12px;
+            border-radius: 16px;
             font-family: var(--font);
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             cursor: pointer;
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 10px;
-            transition: transform 0.2s;
+            box-shadow: 0 5px 20px rgba(255, 255, 255, 0.15);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .btn-primary:active {
-            transform: scale(0.98);
+            transform: scale(0.97);
+            box-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
         }
+
 
         .btn-primary svg {
             width: 20px;
@@ -328,34 +400,59 @@
     <!-- MAP VIEW -->
     <div id="map-view">
         <div class="header">
-            <div class="logo-container">
-                <img src="logo.png" class="app-logo logo-img" alt="Logo">
+            <div class="header-content">
+                <div class="logo-container">
+                    <img src="logo.png" class="logo-img" alt="Logo">
+                </div>
+                <div class="brand-text">
+                    <h1>BAJASTAY</h1>
+                    <p>CONCIERGE</p>
+                </div>
             </div>
-            <div class="brand-text">
-                <h1>BAJASTAY</h1>
-                <p>CONCIERGE NAVIGATION</p>
+
+            <!-- CONTROLS: LANG & AUDIO -->
+            <div class="controls-area">
+                <button class="ctl-btn" id="btn-lang-map" onclick="toggleLang()">
+                    🌐 <span id="lbl-lang">ES</span>
+                </button>
+                <button class="ctl-btn active" id="btn-audio-map" onclick="toggleVoiceMap()">
+                    🔊
+                </button>
             </div>
         </div>
 
         <div id="map" style="flex:1;"></div>
 
         <div class="bottom-card">
-            <div class="trip-info">
+            <div class="trip-header">
                 <div>
-                    <div class="trip-dest">TU DESTINO</div>
-                    <div class="trip-title">BajaStay Airbnb</div>
-                </div>
-                <div class="trip-meta">
-                    <div class="trip-time" id="trip-time">-- min</div>
-                    <div class="trip-dist" id="trip-dist">Calculando...</div>
+                    <div class="trip-label">TU DESTINO</div>
+                    <div class="trip-dest-name">BajaStay Airbnb</div>
                 </div>
             </div>
+
+            <div class="trip-header">
+                <div style="font-size:12px; color:#aaa; max-width:60%;">
+                    Ruta optimizada desde Aeropuerto.
+                </div>
+                <div class="trip-stats">
+                    <div class="stat-item">
+                        <div class="stat-val" id="trip-time">--</div>
+                        <div class="stat-unit">min</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-val" id="trip-dist">--</div>
+                        <div class="stat-unit">km</div>
+                    </div>
+                </div>
+            </div>
+
             <button class="btn-primary" onclick="startAR()" id="btn-start" disabled>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
                     stroke-linejoin="round">
                     <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
                 </svg>
-                INICIAR NAVEGACIÓN AR
+                <span id="btn-start-text">INICIAR NAVEGACIÓN</span>
             </button>
         </div>
     </div>
@@ -459,11 +556,25 @@
             .setPopup(new mapboxgl.Popup({ offset: 25 }).setText(DESTINATION.name))
             .addTo(map);
 
+        // FIXED START POINT (Airport)
+        const START_POINT = [-110.3626, 24.0726];
+
         map.on('load', () => {
-            // Intentar obtener GPS
-            navigator.geolocation.getCurrentPosition(successLocation, errorLocation, {
-                enableHighAccuracy: true
-            });
+            // FORCE START AT AIRPORT (Ignora GPS actual para el cálculo de ruta)
+            // Esto asegura que la línea siempre vaya Aeropuerto -> Airbnb
+            app.userLocation = START_POINT;
+
+            // Centrar mapa en Aeropuerto
+            map.flyTo({ center: app.userLocation, zoom: 14 });
+
+            // Marcador de "Inicio" (Aeropuerto)
+            new mapboxgl.Marker({ color: '#ffffff', scale: 0.8 }).setLngLat(app.userLocation).addTo(map);
+
+            // Calcular Ruta Inmediatamente desde Aeropuerto
+            calculateRoute(app.userLocation);
+
+            // Opcional: Iniciar rastreo de GPS real solo para mover el marcador azul si se desea, 
+            // pero la ruta se mantiene fija desde el origen.
         });
 
         function successLocation(pos) {
@@ -533,6 +644,41 @@
             }
         }
 
+        // TEXT DICTIONARY
+        const TXT = {
+            es: {
+                dest: "TU DESTINO", start: "INICIAR NAVEGACIÓN", loading: "CARGANDO RUTA...",
+                welcome: "Bienvenido. Iniciando navegación hacia Baja Stay.", routeOpt: "Ruta optimizada desde Aeropuerto.",
+                arr: "¡Has llegado!"
+            },
+            en: {
+                dest: "YOUR DESTINATION", start: "START NAVIGATION", loading: "LOADING ROUTE...",
+                welcome: "Welcome. Starting navigation to Baja Stay.", routeOpt: "Optimized route from Airport.",
+                arr: "You have arrived!"
+            }
+        };
+
+        // --- TOGGLES ---
+        window.toggleLang = () => {
+            app.lang = app.lang === 'es' ? 'en' : 'es';
+            const t = TXT[app.lang];
+
+            // GUI Updates
+            document.getElementById('lbl-lang').innerText = app.lang.toUpperCase();
+            document.querySelector('.trip-label').innerText = t.dest;
+            document.getElementById('btn-start-text').innerText = t.start;
+            // Update route desc if needed
+        };
+
+        window.toggleVoiceMap = () => {
+            app.voiceEnabled = !app.voiceEnabled;
+            const icon = app.voiceEnabled ? "🔊" : "🔇";
+            document.getElementById('btn-audio-map').innerText = icon;
+            document.getElementById('btn-audio-map').classList.toggle('active', app.voiceEnabled);
+            // Sync AR button
+            document.getElementById('btn-voice').innerText = icon;
+        };
+
         // --- 3. NAVEGACIÓN AR ---
         window.startAR = () => {
             if (!app.route) return;
@@ -542,7 +688,7 @@
             els.mapView.classList.add('hidden');
             els.arView.classList.add('visible');
 
-            speak("Bienvenido. Iniciando navegación hacia Baja Stay. Por favor, sigue la flecha en pantalla.");
+            speak(TXT[app.lang].welcome);
 
             // Iniciar Loop de Navegación
             startNavLoop();
@@ -641,7 +787,7 @@
             if (!app.voiceEnabled) return;
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'es-MX'; // Español México
+            u.lang = app.lang === 'es' ? 'es-MX' : 'en-US';
             window.speechSynthesis.speak(u);
         }
 
