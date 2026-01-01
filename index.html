@@ -4,18 +4,13 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>BajaStay Concierge</title>
-
+    <title>BajaStay Rentals</title>
     <!-- FONTS -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-
     <!-- LIBRARIES -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script type='text/javascript'
-        src='https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex-location-only.js'></script>
-    <script type='text/javascript'
-        src='https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js'></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex-location-only.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
@@ -23,7 +18,7 @@
         :root {
             --primary: #000000;
             --accent: #00F3FF;
-            --glass: rgba(15, 15, 15, 0.95);
+            --glass: rgba(20, 20, 20, 0.95);
             --text: #ffffff;
             --font: 'Outfit', sans-serif;
         }
@@ -35,254 +30,217 @@
 
         body {
             margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
             background: var(--primary);
             font-family: var(--font);
             color: var(--text);
             overflow: hidden;
         }
 
-        /* === LOADING === */
-        #loading-screen {
+        /* === UI: LANDING / ROUTE SELECTOR === */
+        #landing-overlay {
             position: fixed;
             inset: 0;
-            z-index: 9999;
-            background: #000;
+            z-index: 2000;
+            background: black;
+            background-image: radial-gradient(circle at 50% 10%, #1a1a1a, black);
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s;
-        }
-
-        /* === MAIN VIEW === */
-        #map-view {
-            position: absolute;
-            inset: 0;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
+            padding: 30px;
             transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        #map-view.hidden {
-            transform: translateY(100%);
+        #landing-overlay.closed {
+            transform: translateY(-100%);
         }
 
-        /* === HEADER === */
-        .header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            padding: 20px;
-            background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0) 100%);
-            z-index: 500;
+        .landing-header {
+            margin-bottom: 40px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            pointer-events: none;
+            gap: 20px;
         }
 
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            pointer-events: auto;
+        /* ROBUST LOGO CSS */
+        .big-logo {
+            width: 80px;
+            height: 80px;
+            background-color: white;
+            border-radius: 20px;
+            background-image: url('logo.png');
+            background-size: 80%;
+            background-position: center;
+            background-repeat: no-repeat;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+            flex-shrink: 0;
         }
 
-        /* LOGO FIX: Forced dimensions and background */
-        .logo-container {
-            width: 50px;
-            height: 50px;
-            min-width: 50px;
-            min-height: 50px;
-            background: white;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            box-shadow: 0 0 20px rgba(0, 243, 255, 0.15);
-        }
-
-        .logo-img {
-            width: 90%;
-            height: 90%;
-            object-fit: contain;
-            display: block;
-        }
-
-        .brand-text h1 {
+        .landing-title h1 {
             margin: 0;
-            font-size: 20px;
+            font-size: 32px;
             font-weight: 800;
             line-height: 1;
         }
 
-        .brand-text p {
-            margin: 0;
-            font-size: 10px;
-            font-weight: 600;
-            opacity: 0.8;
+        .landing-title p {
+            margin: 5px 0 0;
+            font-size: 14px;
+            opacity: 0.6;
             letter-spacing: 2px;
-            text-transform: uppercase;
             color: var(--accent);
         }
 
-        .header-controls {
+        .route-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 25px;
+            margin-bottom: 20px;
             display: flex;
-            gap: 10px;
-            pointer-events: auto;
+            align-items: center;
+            gap: 20px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: 0.3s;
         }
 
-        .icon-btn {
+        .route-card:active {
+            transform: scale(0.98);
             background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            width: 40px;
-            height: 40px;
+        }
+
+        .route-card.selected {
+            border-color: var(--accent);
+            background: rgba(0, 243, 255, 0.05);
+        }
+
+        .card-icon {
+            font-size: 32px;
+            background: rgba(0, 0, 0, 0.3);
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            cursor: pointer;
-            transition: 0.2s;
+            flex-shrink: 0;
         }
 
-        .icon-btn:active {
-            transform: scale(0.9);
-            background: var(--accent);
-            color: black;
+        .card-info h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
         }
 
-        .icon-btn.active {
-            border-color: var(--accent);
-            color: var(--accent);
+        .card-info p {
+            margin: 5px 0 0;
+            font-size: 13px;
+            opacity: 0.5;
         }
 
-        /* === MODE SELECTION PANEL === */
-        #route-panel {
+        .card-arrow {
             position: absolute;
-            top: 90px;
+            right: 25px;
+            font-size: 24px;
+            opacity: 0.3;
+        }
+
+        /* === MAP VIEW === */
+        #map-view {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        /* HEADER (Fixed & Robust) */
+        .fixed-header {
+            position: absolute;
+            top: 20px;
             left: 20px;
             right: 20px;
-            background: var(--glass);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 20px;
-            z-index: 400;
-            display: none;
-            /* Hidden by default */
-        }
-
-        #route-panel.visible {
-            display: block;
-        }
-
-        .panel-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #888;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-        }
-
-        .route-opt {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            border: 1px solid transparent;
+            height: 60px;
+            z-index: 1000;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            pointer-events: none;
+            /* click thru */
         }
 
-        .route-opt:hover {
-            border-color: var(--accent);
+        .mini-logo-wrapper {
+            width: 50px;
+            height: 50px;
+            background-color: white;
+            border-radius: 14px;
+            background-image: url('logo.png');
+            /* CSS BACKGROUND IMAGE IS SAFER */
+            background-size: 80%;
+            background-position: center;
+            background-repeat: no-repeat;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+            border: 2px solid white;
+            /* Force visibility */
         }
 
-        .route-opt h3 {
-            margin: 0 0 5px 0;
-            font-size: 16px;
+        .controls {
+            pointer-events: auto;
+            display: flex;
+            gap: 10px;
         }
 
-        .route-opt p {
-            margin: 0;
-            font-size: 12px;
-            opacity: 0.6;
-        }
-
-        .manual-inputs input {
-            width: 100%;
-            background: black;
-            border: 1px solid #333;
+        .ctrl-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             color: white;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            font-family: var(--font);
-            font-size: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
         }
 
-        /* === BOTTOM CARD === */
+        /* BOTTOM CARD */
         .bottom-card {
             position: absolute;
             bottom: 30px;
             left: 20px;
             right: 20px;
             background: var(--glass);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 24px;
             padding: 24px;
-            z-index: 200;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 500;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
 
-        .trip-data {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-bottom: 20px;
-        }
-
-        .stat-big {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--accent);
-        }
-
-        .stat-label {
-            font-size: 11px;
-            color: #888;
-        }
-
-        .btn-main {
+        .btn-start {
             width: 100%;
             background: white;
             color: black;
             font-weight: 800;
             padding: 16px;
-            border-radius: 14px;
+            border-radius: 16px;
             border: none;
             font-size: 16px;
-            letter-spacing: 1px;
+            margin-top: 15px;
             cursor: pointer;
         }
 
-        .btn-main:disabled {
+        .btn-start:disabled {
             opacity: 0.5;
-            cursor: not-allowed;
+            background: #555;
+            color: #888;
         }
 
-        /* === AR VIEW & HUD === */
+        /* AR VIEW */
         #ar-view {
             position: absolute;
             inset: 0;
@@ -290,39 +248,47 @@
             visibility: hidden;
             opacity: 0;
             transition: opacity 0.5s;
+            background: black;
         }
 
         #ar-view.visible {
             visibility: visible;
             opacity: 1;
+            background: transparent;
         }
 
-        .hud-overlay {
+        .ar-hud {
             position: absolute;
-            inset: 0;
             padding: 20px;
+            inset: 0;
             pointer-events: none;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
         }
 
-        .hud-top {
-            pointer-events: auto;
+        .ar-top {
+            margin-top: 10px;
             display: flex;
             justify-content: space-between;
+            pointer-events: auto;
         }
 
-        .nav-card {
-            background: rgba(0, 0, 0, 0.85);
-            padding: 15px 20px;
-            border-radius: 16px;
+        .instr-box {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 15px;
             border-left: 4px solid var(--accent);
+        }
+
+        .big-instr {
+            font-size: 20px;
+            font-weight: 700;
             color: white;
+            margin-bottom: 5px;
         }
 
         /* FAKE 3D ARROW */
-        .arrow-container {
+        .arrow-wrap {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -333,242 +299,218 @@
             align-items: center;
             justify-content: center;
         }
-
-        .arrow-svg {
-            width: 120px;
-            height: 120px;
-            overflow: visible;
-            transition: transform 0.1s linear;
-        }
-
-        .loader {
-            width: 30px;
-            height: 30px;
-            border: 3px solid #333;
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 1s infinite linear;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
     </style>
 </head>
 
 <body>
 
-    <!-- LOADING SCREEN -->
-    <div id="loading-screen">
-        <div class="logo-container" style="margin-bottom: 20px;">
-            <img src="logo.png" class="logo-img" alt="Logo">
+    <!-- 1. LANDING / ROUTE SELECTION -->
+    <div id="landing-overlay">
+        <div class="landing-header">
+            <div class="big-logo"></div> <!-- CSS Background Image -->
+            <div class="landing-title">
+                <h1>BAJASTAY</h1>
+                <p>RENTALS</p>
+            </div>
         </div>
-        <div class="loader"></div>
+
+        <div style="flex:1;">
+            <p style="margin-bottom:20px; font-size:12px; font-weight:700; color:#888;">SELECCIONA TU RUTA</p>
+
+            <!-- OPTION A: DEFAULT -->
+            <div class="route-card selected" id="opt-default" onclick="selectMode('default')">
+                <div class="card-icon">✈️</div>
+                <div class="card-info">
+                    <h3>Ruta Rentals</h3>
+                    <p>Aeropuerto ➜ Chametla ➜ BajaStay</p>
+                </div>
+                <div class="card-arrow">➜</div>
+            </div>
+
+            <!-- OPTION B: MANUAL -->
+            <div class="route-card" id="opt-manual" onclick="selectMode('manual')">
+                <div class="card-icon">👆</div>
+                <div class="card-info">
+                    <h3>Ruta Manual</h3>
+                    <p>Toca el mapa para crear ruta</p>
+                </div>
+                <div class="card-arrow">➜</div>
+            </div>
+        </div>
+
+        <button class="btn-start" onclick="confirmSelection()">CONTINUAR</button>
     </div>
 
-    <!-- MAP VIEW -->
+    <!-- 2. MAP VIEW -->
     <div id="map-view">
-        <div class="header">
-            <div class="header-left">
-                <div class="logo-container">
-                    <img src="logo.png" class="logo-img" alt="Logo" onerror="this.src='logo.jpeg'">
-                </div>
-                <div class="brand-text">
-                    <h1>BAJASTAY</h1>
-                    <p>CONCIERGE</p>
-                </div>
-            </div>
-            <div class="header-controls">
-                <button class="icon-btn" onclick="toggleLang()" id="btn-lang">ES</button>
-                <button class="icon-btn" onclick="togglePanel()">⚙️</button>
-            </div>
-        </div>
-
-        <!-- ROUTE SELECTION PANEL -->
-        <div id="route-panel">
-            <div class="panel-title" id="txt-panel-title">CONFIGURACIÓN DE RUTA</div>
-
-            <!-- DEFAULT ROUTE BTN -->
-            <div class="route-opt" onclick="loadDefaultRoute()">
-                <div>
-                    <h3 style="color:var(--accent);">★ DEFAULT</h3>
-                    <p id="txt-default-desc">Aeropuerto ➜ Chametla ➜ BajaStay</p>
-                </div>
-                <div>➜</div>
-            </div>
-
-            <!-- MANUAL TOOLS -->
-            <div style="margin-top:20px;">
-                <div class="panel-title" id="txt-manual-title">MODO MANUAL</div>
-                <p style="font-size:11px; opacity:0.6; margin-bottom:10px;" id="txt-manual-instr">Haz clic en el mapa
-                    para: 1. Inicio, 2. Waypoint, 3. Destino</p>
-                <button class="icon-btn" style="width:100%; border-radius:10px; font-size:14px;"
-                    onclick="resetMapClicks()" id="txt-reset">REINICIAR PUNTOS</button>
+        <div class="fixed-header">
+            <div class="mini-logo-wrapper" onclick="showLanding()"></div> <!-- Logo btn returns to menu -->
+            <div class="controls">
+                <button class="ctrl-btn" id="btn-lang" onclick="toggleLang()">ES</button>
+                <button class="ctrl-btn" onclick="showLanding()">⚙️</button>
             </div>
         </div>
 
         <div id="map" style="flex:1;"></div>
 
-        <div class="bottom-card">
-            <div class="trip-data">
+        <div class="bottom-card" id="bottom-card">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                 <div>
-                    <div class="stat-label" id="txt-dest-label">DESTINO</div>
-                    <div style="font-size:20px; font-weight:700;">BajaStay Airbnb</div>
+                    <div style="font-size:11px; color:#888; font-weight:700;">DESTINO</div>
+                    <div style="font-size:22px; font-weight:700; margin-top:2px;" id="txt-dest-name">...</div>
                 </div>
                 <div style="text-align:right;">
-                    <div class="stat-big" id="trip-time">-- min</div>
-                    <div class="stat-label" id="trip-dist">-- km</div>
+                    <div style="font-size:24px; font-weight:800; color:var(--accent);" id="txt-time">--</div>
+                    <div style="font-size:12px; color:#888;" id="txt-dist">--</div>
                 </div>
             </div>
-            <button class="btn-main" id="btn-start" onclick="startAR()" disabled>INICIAR RUTA</button>
+            <button class="btn-start" id="btn-go" onclick="startAR()" disabled>INICIAR RUTA</button>
+            <p style="font-size:10px; opacity:0.5; text-align:center; margin-top:10px; display:none;" id="manual-tip">
+                Toca el mapa para añadir puntos</p>
         </div>
     </div>
 
-    <!-- AR VIEW -->
+    <!-- 3. AR VIEW -->
     <div id="ar-view">
         <a-scene vr-mode-ui="enabled: false" embedded renderer="logarithmicDepthBuffer: true; alpha: true;"
             arjs="sourceType: webcam; debugUIEnabled: false; videoTexture: true; displayWidth: 1280; displayHeight: 720;">
             <a-camera gps-camera="minDistance: 1; gpsMinDistance: 1;" rotation-reader></a-camera>
         </a-scene>
 
-        <div class="hud-overlay">
-            <div class="hud-top">
-                <div class="nav-card">
-                    <div style="font-size:18px; font-weight:700;" id="nav-instr">...</div>
-                    <div style="font-size:12px; opacity:0.7; margin-top:4px;" id="nav-dist">-- m</div>
+        <div class="ar-hud">
+            <div class="ar-top">
+                <div class="instr-box">
+                    <div class="big-instr" id="ar-instr">Iniciando...</div>
+                    <div style="font-size:14px; opacity:0.8;" id="ar-next">-- m</div>
                 </div>
                 <div style="display:flex; gap:10px;">
-                    <button class="icon-btn" onclick="toggleVoice()" id="btn-voice">🔊</button>
-                    <button class="icon-btn" style="background:#ff3b30; border:none;" onclick="stopAR()">✕</button>
+                    <button class="ctrl-btn" id="btn-voice" onclick="toggleVoice()">🔊</button>
+                    <button class="ctrl-btn" style="background:#ff3b30;" onclick="stopAR()">✕</button>
                 </div>
             </div>
-
-            <!-- 3D ARROW -->
-            <div class="arrow-container">
-                <svg class="arrow-svg" id="arrow-icon" viewBox="0 0 100 100">
-                    <filter id="f1" x="-20%" y="-20%" width="140%" height="140%">
-                        <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity="0.5" />
+            <div class="arrow-wrap">
+                <!-- 3D SVG Arrow -->
+                <svg width="140" height="140" viewBox="0 0 100 100" id="ar-arrow" style="overflow:visible;">
+                    <filter id="glow">
+                        <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#00F3FF" />
                     </filter>
-                    <path d="M50 10 L90 80 L50 65 L10 80 Z" fill="#00F3FF" stroke="white" stroke-width="2"
-                        filter="url(#f1)" />
-                    <path d="M50 65 L90 80 L50 90 L10 80 Z" fill="#008c94" opacity="0.6" />
-                    <!-- Under side for 3D feel -->
+                    <path d="M50 10 L85 80 L50 65 L15 80 Z" fill="#00F3FF" stroke="white" stroke-width="2"
+                        filter="url(#glow)" />
+                    <path d="M50 65 L85 80 L50 90 L15 80 Z" fill="#008c94" opacity="0.6" />
                 </svg>
             </div>
         </div>
     </div>
 
     <script>
-        // === CONFIG ===
-        const TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
-        mapboxgl.accessToken = TOKEN;
+        // CONFIG
+        mapboxgl.accessToken = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
 
-        // COORDENADAS RUTA DEFAULT (Exactas del link)
-        const DEFAULT_START = [-110.3626, 24.0726]; // Aeropuerto
-        const DEFAULT_WP = [-110.393072, 24.097741]; // Punto Clave
-        const DEFAULT_DEST = [-110.392168, 24.095156]; // Airbnb
+        // FIXED ROUTE
+        const ROUTE_DEF = [
+            [-110.3626, 24.0726], // Start: Airport
+            [-110.393072, 24.097741], // WP: Chametla
+            [-110.392168, 24.095156]  // Dest: Airbnb
+        ];
 
-        // === STATE ===
+        // STATE
         let app = {
-            lang: 'es', // 'es' | 'en'
+            mode: 'default', // 'default' | 'manual'
+            lang: 'es',
             voice: true,
-            navigating: false,
+            markers: [],
+            points: [],
             route: null,
             step: 0,
-            simulatedStart: DEFAULT_START,
-            markers: [] // To store markers user adds
+            simStart: null
         };
 
-        // === TEXTS (Translations) ===
-        const DICT = {
-            es: {
-                start: "INICIAR RUTA", dest: "DESTINO", loading: "Cargando...",
-                pTitle: "CONFIGURACIÓN", pManual: "MODO MANUAL",
-                instr: "Toca el mapa: 1. Inicio, 2. Intermedio, 3. Fin",
-                reset: "REINICIAR MAPA", defDesc: "Aeropuerto ➜ Airbnb",
-                welcome: "Bienvenido. Navegación iniciada.",
-                nav: {
-                    straight: "Sigue recto", left: "Gira a la izquierda", right: "Gira a la derecha", arrive: "Has llegado, destino a la derecha"
-                }
-            },
-            en: {
-                start: "START ROUTE", dest: "DESTINATION", loading: "Loading...",
-                pTitle: "SETTINGS", pManual: "MANUAL MODE",
-                instr: "Tap map: 1. Start, 2. Waypoint, 3. Dest",
-                reset: "RESET MAP", defDesc: "Airport ➜ Airbnb",
-                welcome: "Welcome. Navigation started.",
-                nav: {
-                    straight: "Go straight", left: "Turn left", right: "Turn right", arrive: "You have arrived, destination on right"
-                }
-            }
+        const TXT = {
+            es: { btn: "CONTINUAR", go: "INICIAR RUTA", manualTip: "Toca el mapa: 1. Inicio, 2. WP, ...", dest: "BajaStay Airbnb", welcome: "Bienvenido.", inst: { s: "Sigue recto", l: "Gira izquierda", r: "Gira derecha", a: "Has llegado" } },
+            en: { btn: "CONTINUE", go: "START ROUTE", manualTip: "Tap map: 1. Start, 2. WP, ...", dest: "BajaStay Airbnb", welcome: "Welcome.", inst: { s: "Go straight", l: "Turn left", r: "Turn right", a: "Arrived" } }
         };
 
-        // === INITIALIZATION ===
+        // --- UI ---
+        function selectMode(m) {
+            app.mode = m;
+            document.getElementById('opt-default').classList.toggle('selected', m === 'default');
+            document.getElementById('opt-manual').classList.toggle('selected', m === 'manual');
+        }
+
+        function confirmSelection() {
+            document.getElementById('landing-overlay').classList.add('closed');
+            initMapLogic();
+        }
+
+        function showLanding() {
+            document.getElementById('landing-overlay').classList.remove('closed');
+        }
+
+        function toggleLang() {
+            app.lang = app.lang === 'es' ? 'en' : 'es';
+            document.getElementById('btn-lang').innerText = app.lang.toUpperCase();
+            // TODO: Update other texts if needed dynamically
+        }
+
+        // --- MAP ---
         const map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/dark-v11',
-            center: DEFAULT_START,
-            zoom: 12,
-            attributionControl: false
+            center: ROUTE_DEF[0], zoom: 12, routing: false
         });
 
-        const els = {
-            loader: document.getElementById('loading-screen'),
-            panel: document.getElementById('route-panel'),
-            btnStart: document.getElementById('btn-start'),
-            tripTime: document.getElementById('trip-time'),
-            tripDist: document.getElementById('trip-dist'),
-            arrow: document.getElementById('arrow-icon')
-        };
+        function initMapLogic() {
+            // Clean up
+            app.markers.forEach(m => m.remove());
+            app.markers = [];
+            app.points = [];
 
-        map.on('load', () => {
-            els.loader.style.opacity = '0';
-            setTimeout(() => els.loader.style.display = 'none', 500);
+            if (app.mode === 'default') {
+                document.getElementById('manual-tip').style.display = 'none';
+                document.getElementById('txt-dest-name').innerText = TXT[app.lang].dest;
+                plotRoute(ROUTE_DEF);
+            } else {
+                document.getElementById('manual-tip').style.display = 'block';
+                document.getElementById('manual-tip').innerText = TXT[app.lang].manualTip;
+                document.getElementById('txt-dest-name').innerText = "Destino Manual";
+                document.getElementById('btn-go').disabled = true;
+                document.getElementById('txt-time').innerText = "--";
+                document.getElementById('txt-dist').innerText = "--";
 
-            // Auto Select Default Route
-            loadDefaultRoute();
-
-            // Map Click Listeners for Manual Mode
-            map.on('click', handleMapClick);
-        });
-
-        // === ROUTE LOGIC ===
-        async function loadDefaultRoute() {
-            clearMarkers();
-            // Add Start
-            addMarker(DEFAULT_START, '#ffffff'); // White for Start
-            // Add WP
-            addMarker(DEFAULT_WP, '#aaaaaa'); // Gray for WP
-            // Add Dest
-            addMarker(DEFAULT_DEST, '#00F3FF'); // Cyan for Dest
-
-            // Calc Route
-            await getRoute([DEFAULT_START, DEFAULT_WP, DEFAULT_DEST]);
-
-            // Zoom to fit
-            const bounds = new mapboxgl.LngLatBounds();
-            [DEFAULT_START, DEFAULT_WP, DEFAULT_DEST].forEach(p => bounds.extend(p));
-            map.fitBounds(bounds, { padding: 80 });
-
-            // Close panel if open
-            els.panel.classList.remove('visible');
+                // Clear existing line
+                if (map.getSource('route')) map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
+            }
         }
 
-        async function getRoute(points) {
-            // Join coords
-            const str = points.map(p => `${p[0]},${p[1]}`).join(';');
-            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${str}?steps=true&geometries=geojson&access_token=${TOKEN}`;
+        map.on('click', e => {
+            if (app.mode !== 'manual') return;
+            const c = [e.lngLat.lng, e.lngLat.lat];
+            app.points.push(c);
 
+            // Marker
+            const cel = document.createElement('div');
+            cel.className = 'ctrl-btn';
+            cel.innerText = app.points.length;
+            cel.style.fontSize = "12px"; cel.style.background = app.points.length === 1 ? 'white' : 'cyan'; cel.style.color = 'black';
+            cel.style.width = '24px'; cel.style.height = '24px';
+
+            const m = new mapboxgl.Marker(cel).setLngLat(c).addTo(map);
+            app.markers.push(m);
+
+            if (app.points.length >= 2) plotRoute(app.points);
+        });
+
+        async function plotRoute(coords) {
+            const str = coords.map(c => c.join(',')).join(';');
             try {
-                const res = await fetch(url);
+                const res = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${str}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`);
                 const data = await res.json();
-                if (!data.routes.length) return;
+                const route = data.routes[0];
+                app.route = route;
+                app.simStart = coords[0]; // For AR
 
-                app.route = data.routes[0];
-                const geo = app.route.geometry;
-
+                // Draw
+                const geo = route.geometry;
                 if (map.getSource('route')) map.getSource('route').setData(geo);
                 else {
                     map.addLayer({
@@ -578,177 +520,90 @@
                     });
                 }
 
-                // Update UI
-                const min = Math.round(app.route.duration / 60);
-                const km = (app.route.distance / 1000).toFixed(1);
-                els.tripTime.innerText = `${min} min`;
-                els.tripDist.innerText = `${km} km`;
+                // Fit
+                const b = new mapboxgl.LngLatBounds();
+                coords.forEach(p => b.extend(p));
+                map.fitBounds(b, { padding: 100 });
 
-                els.btnStart.disabled = false;
-
-                // Set start for AR logic
-                app.simulatedStart = points[0];
+                // UI
+                const min = Math.round(route.duration / 60);
+                const km = (route.distance / 1000).toFixed(1);
+                document.getElementById('txt-time').innerText = min + " min";
+                document.getElementById('txt-dist').innerText = km + " km";
+                document.getElementById('btn-go').disabled = false;
 
             } catch (e) { console.error(e); }
         }
 
-        // === MANUAL MAP LOGIC ===
-        let clickPoints = [];
-        function handleMapClick(e) {
-            if (!els.panel.classList.contains('visible')) return; // Only if panel open? OR always? Let's say only if panel open to avoid accidental clicks
-
-            const coord = [e.lngLat.lng, e.lngLat.lat];
-            clickPoints.push(coord);
-
-            let color = '#ffffff';
-            if (clickPoints.length === 2) color = '#aaaaaa';
-            if (clickPoints.length >= 3) color = '#00F3FF';
-
-            addMarker(coord, color);
-
-            // If we have at least 2 points, route
-            if (clickPoints.length >= 2) {
-                getRoute(clickPoints);
-            }
-        }
-
-        function resetMapClicks() {
-            clearMarkers();
-            clickPoints = [];
-            if (map.getSource('route')) map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
-            els.btnStart.disabled = true;
-            els.tripTime.innerText = "--";
-        }
-
-        function addMarker(lngLat, color) {
-            const m = new mapboxgl.Marker({ color: color }).setLngLat(lngLat).addTo(map);
-            app.markers.push(m);
-        }
-
-        function clearMarkers() {
-            app.markers.forEach(m => m.remove());
-            app.markers = [];
-        }
-
-        // === UI CONTROLS ===
-        window.togglePanel = () => els.panel.classList.toggle('visible');
-
-        window.toggleLang = () => {
-            app.lang = app.lang === 'es' ? 'en' : 'es';
-            const t = DICT[app.lang];
-
-            // Update Buttons
-            document.getElementById('btn-lang').innerText = app.lang.toUpperCase();
-            document.getElementById('txt-panel-title').innerText = t.pTitle;
-            document.getElementById('txt-default-desc').innerText = t.defDesc;
-            document.getElementById('txt-manual-title').innerText = t.pManual;
-            document.getElementById('txt-manual-instr').innerText = t.instr;
-            document.getElementById('txt-reset').innerText = t.reset;
-            document.getElementById('txt-dest-label').innerText = t.dest;
-            document.getElementById('btn-start').innerText = t.start;
-        };
-
-        window.toggleVoice = () => {
-            app.voice = !app.voice;
-            document.getElementById('btn-voice').innerText = app.voice ? "🔊" : "🔇";
-        }
-
-        // === AR & NAVIGATION ===
+        // --- AR ---
         window.startAR = () => {
-            // Close map, show AR
-            document.getElementById('map-view').classList.add('hidden');
+            document.getElementById('map-view').style.opacity = 0; // fade out map
+            setTimeout(() => document.getElementById('map-view').classList.add('hidden'), 500); // then hide
             document.getElementById('ar-view').classList.add('visible');
-            app.navigating = true;
-
-            speak(DICT[app.lang].welcome);
-            startARLoop();
+            speak(TXT[app.lang].welcome);
+            startLoop();
         };
 
         window.stopAR = () => {
             document.getElementById('map-view').classList.remove('hidden');
+            document.getElementById('map-view').style.opacity = 1;
             document.getElementById('ar-view').classList.remove('visible');
-            app.navigating = false;
             window.speechSynthesis.cancel();
         };
 
-        function startARLoop() {
-            let lastHead = 0;
-            let lastSpeak = 0;
-            let currentInstrKey = ""; // Store key like 'straight', 'left'
-
+        function startLoop() {
+            let lastH = 0; let lastSpk = 0; let lastK = "";
             window.addEventListener('deviceorientation', e => {
                 let h = e.webkitCompassHeading || (360 - e.alpha);
-                if (!h) return;
-                // Smooth
-                const d = h - lastHead;
-                const adj = (d > 180) ? d - 360 : (d < -180 ? d + 360 : d);
-                lastHead = (lastHead + (adj * 0.1) + 360) % 360;
+                if (h) {
+                    let d = h - lastH;
+                    if (d > 180) d -= 360; if (d < -180) d += 360;
+                    lastH = (lastH + d * 0.1 + 360) % 360;
+                }
             });
 
-            const AR_START = app.simulatedStart; // Simulating we are at route start
-
             navigator.geolocation.watchPosition(pos => {
-                if (!app.navigating) return;
-
-                // For demo: Use GPS. In real life, user might be far from route start.
-                const lat = pos.coords.latitude;
-                const lng = pos.coords.longitude;
-                // TODO: Project position to route line for production. 
-                // For MVP: Simple step tracking.
-
+                if (!app.route) return;
+                const lat = pos.coords.latitude; const lng = pos.coords.longitude;
+                // Simple logic: target next step
                 const steps = app.route.geometry.coordinates;
-                let target = steps[app.step];
-                const d = dist(lat, lng, target[1], target[0]);
-
+                let t = steps[app.step];
+                const d = dist(lat, lng, t[1], t[0]);
                 if (d < 25 && app.step < steps.length - 1) app.step++;
 
-                // Bearing
-                const b = bearing(lat, lng, target[1], target[0]);
-                const rel = b - lastHead;
-                els.arrow.style.transform = `rotate(${rel}deg)`;
+                // Arrow
+                const b = bearing(lat, lng, t[1], t[0]);
+                const rel = b - lastH;
+                document.getElementById('ar-arrow').style.transform = `rotate(${rel}deg)`;
 
-                // Instrucción
-                const txt = DICT[app.lang].nav;
-                let key = "straight";
-                if (rel < -25) key = "left";
-                if (rel > 25) key = "right";
-                if (d < 20 && app.step >= steps.length - 5) key = "arrive";
+                // Instr
+                document.getElementById('ar-next').innerText = Math.round(d) + " m";
+                let k = "s";
+                if (rel < -25) k = "l"; if (rel > 25) k = "r";
+                if (d < 20 && app.step > steps.length - 3) k = "a";
 
-                document.getElementById('nav-instr').innerText = txt[key];
-                document.getElementById('nav-dist').innerText = Math.round(d) + " m";
+                const txt = TXT[app.lang].inst[k];
+                document.getElementById('ar-instr').innerText = txt;
 
-                // Voice (English Accent Fix: passing correct text from dictionary)
+                // Voice
                 const now = Date.now();
-                if (app.voice && (now - lastSpeak > 10000 || key !== currentInstrKey)) {
-                    speak(txt[key]);
-                    lastSpeak = now;
-                    currentInstrKey = key;
+                if (app.voice && (now - lastSpk > 8000 || k !== lastK)) {
+                    speak(txt);
+                    lastSpk = now; lastK = k;
                 }
-
             }, null, { enableHighAccuracy: true });
         }
 
-        function speak(text) {
-            if (!app.voice) return;
+        function speak(pay) {
             window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(text);
-            // Force accent based on lang
+            const u = new SpeechSynthesisUtterance(pay);
             u.lang = app.lang === 'es' ? 'es-MX' : 'en-US';
             window.speechSynthesis.speak(u);
         }
 
-        function dist(la1, lo1, la2, lo2) {
-            const R = 6371e3, p1 = la1 * Math.PI / 180, p2 = la2 * Math.PI / 180;
-            const a = 0.5 - Math.cos((la2 - la1) * Math.PI / 180) / 2 + Math.cos(p1) * Math.cos(p2) * (1 - Math.cos((lo2 - lo1) * Math.PI / 180)) / 2;
-            return R * 2 * Math.asin(Math.sqrt(a));
-        }
-
-        function bearing(la1, lo1, la2, lo2) {
-            const y = Math.sin((lo2 - lo1) * Math.PI / 180) * Math.cos(la2 * Math.PI / 180);
-            const x = Math.cos(la1 * Math.PI / 180) * Math.sin(la2 * Math.PI / 180) - Math.sin(la1 * Math.PI / 180) * Math.cos(la2 * Math.PI / 180) * Math.cos((lo2 - lo1) * Math.PI / 180);
-            return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-        }
-
+        function toggleVoice() { app.voice = !app.voice; document.getElementById('btn-voice').innerText = app.voice ? "🔊" : "🔇"; }
+        function dist(la1, lo1, la2, lo2) { const R = 6371000; const dLa = (la2 - la1) * Math.PI / 180; const dLo = (lo2 - lo1) * Math.PI / 180; const a = Math.sin(dLa / 2) * Math.sin(dLa / 2) + Math.cos(la1 * Math.PI / 180) * Math.cos(la2 * Math.PI / 180) * Math.sin(dLo / 2) * Math.sin(dLo / 2); return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); }
+        function bearing(la1, lo1, la2, lo2) { const y = Math.sin((lo2 - lo1) * Math.PI / 180) * Math.cos(la2 * Math.PI / 180); const x = Math.cos(la1 * Math.PI / 180) * Math.sin(la2 * Math.PI / 180) - Math.sin(la1 * Math.PI / 180) * Math.cos(la2 * Math.PI / 180) * Math.cos((lo2 - lo1) * Math.PI / 180); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; }
     </script>
 </body>
 
