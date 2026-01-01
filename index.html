@@ -706,7 +706,7 @@
                 container: 'mini-map',
                 style: 'mapbox://styles/mapbox/dark-v11',
                 center: app.route.geometry.coordinates[app.step] || ROUTE_DEF[0],
-                zoom: 15,
+                zoom: 14, // Zoom out slightly to see more context
                 pitch: 0,
                 interactive: false,
                 attributionControl: false
@@ -714,21 +714,22 @@
 
             app.miniMap.on('load', () => {
                 if (app.route) {
+                    // 1. ROUTE LINE
                     app.miniMap.addLayer({
                         id: 'mini-route', type: 'line',
                         source: { type: 'geojson', data: app.route.geometry },
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
-                        paint: { 'line-color': '#00F3FF', 'line-width': 4 }
+                        paint: { 'line-color': '#00F3FF', 'line-width': 6 } // Thicker
                     });
 
-                    // Marker Propio
+                    // 2. USER MARKER (Fixed Center)
                     const el = document.createElement('div');
-                    el.style.width = '12px'; el.style.height = '12px';
+                    el.style.width = '14px'; el.style.height = '14px';
                     el.style.backgroundColor = '#00F3FF';
                     el.style.borderRadius = '50%';
-                    el.style.border = '2px solid white';
+                    el.style.border = '3px solid white';
+                    el.style.boxShadow = '0 0 10px #00F3FF';
                     new mapboxgl.Marker(el).setLngLat(app.miniMap.getCenter()).addTo(app.miniMap);
-                    app.miniMapUserMarker = el; // Ref para moverlo si quisiera, pero moveremos el mapa entero
                 }
             });
         }
@@ -855,11 +856,19 @@
         // --- UTILS ---
         function speak(text) {
             window.speechSynthesis.cancel();
+            if (!app.voice) return; // Mute check
             const u = new SpeechSynthesisUtterance(text);
             u.lang = app.lang === 'es' ? 'es-MX' : 'en-US';
             window.speechSynthesis.speak(u);
         }
-        function toggleVoice() { app.voice = !app.voice; document.getElementById('btn-voice').innerText = app.voice ? "🔊" : "🔇"; }
+
+        function toggleVoice() {
+            app.voice = !app.voice;
+            const btn = document.getElementById('btn-voice');
+            btn.innerText = app.voice ? "🔊" : "🔇";
+            btn.style.opacity = app.voice ? "1" : "0.5";
+            if (!app.voice) window.speechSynthesis.cancel();
+        }
 
         // Mate Geográfica
         function dist(la1, lo1, la2, lo2) {
