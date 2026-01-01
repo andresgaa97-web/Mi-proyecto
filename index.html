@@ -66,8 +66,8 @@
             height: 80px;
             background-color: white;
             border-radius: 20px;
-            background-image: url('logo.png');
-            background-size: 80%;
+            background-image: url('logo.jpeg');
+            background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
             box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
@@ -169,20 +169,32 @@
             /* click thru */
         }
 
+        /* ROBUST LOGO CSS */
+        .big-logo {
+            width: 80px;
+            height: 80px;
+            background-color: white;
+            border-radius: 20px;
+            background-image: url('logo.jpeg');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+            flex-shrink: 0;
+        }
+
         .mini-logo-wrapper {
             width: 50px;
             height: 50px;
             background-color: white;
             border-radius: 14px;
-            background-image: url('logo.png');
-            /* CSS BACKGROUND IMAGE IS SAFER */
-            background-size: 80%;
+            background-image: url('logo.jpeg');
+            background-size: contain;
             background-position: center;
             background-repeat: no-repeat;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
             pointer-events: auto;
             border: 2px solid white;
-            /* Force visibility */
         }
 
         .controls {
@@ -384,6 +396,7 @@
                     <div style="font-size:14px; opacity:0.8;" id="ar-next">-- m</div>
                 </div>
                 <div style="display:flex; gap:10px;">
+                    <button class="ctrl-btn" id="btn-lang-ar" onclick="toggleLang()">ES</button>
                     <button class="ctrl-btn" id="btn-voice" onclick="toggleVoice()">🔊</button>
                     <button class="ctrl-btn" style="background:#ff3b30;" onclick="stopAR()">✕</button>
                 </div>
@@ -422,12 +435,15 @@
             points: [],
             route: null,
             step: 0,
-            simStart: null
+            simStart: null,
+            navigating: false,
+            watchId: null,      // NEW: For cancelling GPS
+            orientHandler: null // NEW: For cancelling Compass
         };
 
         const TXT = {
-            es: { btn: "CONTINUAR", go: "INICIAR RUTA", manualTip: "Toca el mapa: 1. Inicio, 2. WP, ...", dest: "BajaStay Airbnb", welcome: "Bienvenido.", inst: { s: "Sigue recto", l: "Gira izquierda", r: "Gira derecha", a: "Has llegado" } },
-            en: { btn: "CONTINUE", go: "START ROUTE", manualTip: "Tap map: 1. Start, 2. WP, ...", dest: "BajaStay Airbnb", welcome: "Welcome.", inst: { s: "Go straight", l: "Turn left", r: "Turn right", a: "Arrived" } }
+            es: { btn: "CONTINUAR", go: "INICIAR RUTA", manualTip: "Toca para añadir Waypoint/Destino", dest: "BajaStay Airbnb", welcome: "Bienvenido.", inst: { s: "Sigue recto", l: "Gira izquierda", r: "Gira derecha", a: "Has llegado" } },
+            en: { btn: "CONTINUE", go: "START ROUTE", manualTip: "Tap to add Waypoint/Dest", dest: "BajaStay Airbnb", welcome: "Welcome.", inst: { s: "Go straight", l: "Turn left", r: "Turn right", a: "Arrived" } }
         };
 
         // --- UI ---
@@ -448,8 +464,9 @@
 
         function toggleLang() {
             app.lang = app.lang === 'es' ? 'en' : 'es';
-            document.getElementById('btn-lang').innerText = app.lang.toUpperCase();
-            // TODO: Update other texts if needed dynamically
+            const code = app.lang.toUpperCase();
+            if (document.getElementById('btn-lang')) document.getElementById('btn-lang').innerText = code;
+            if (document.getElementById('btn-lang-ar')) document.getElementById('btn-lang-ar').innerText = code;
         }
 
         // --- MAP ---
@@ -464,21 +481,43 @@
             app.markers.forEach(m => m.remove());
             app.markers = [];
             app.points = [];
+            app.route = null;
 
             if (app.mode === 'default') {
                 document.getElementById('manual-tip').style.display = 'none';
                 document.getElementById('txt-dest-name').innerText = TXT[app.lang].dest;
+                // Force clear previous line just in case
+                if (map.getSource('route')) map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
                 plotRoute(ROUTE_DEF);
             } else {
+                // MANUAL MODE START @ GPS
                 document.getElementById('manual-tip').style.display = 'block';
-                document.getElementById('manual-tip').innerText = TXT[app.lang].manualTip;
+                document.getElementById('manual-tip').innerText = "Obteniendo ubicación...";
                 document.getElementById('txt-dest-name').innerText = "Destino Manual";
                 document.getElementById('btn-go').disabled = true;
                 document.getElementById('txt-time').innerText = "--";
                 document.getElementById('txt-dist').innerText = "--";
 
-                // Clear existing line
                 if (map.getSource('route')) map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
+
+                // Get Current Location
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const c = [pos.coords.longitude, pos.coords.latitude];
+                    app.points.push(c);
+
+                    // Add User Marker
+                    const cel = document.createElement('div');
+                    cel.className = 'ctrl-btn'; cel.innerText = "📍";
+                    cel.style.fontSize = "16px"; cel.style.background = "white"; cel.style.color = "black";
+                    cel.style.width = '30px'; cel.style.height = '30px';
+                    const m = new mapboxgl.Marker(cel).setLngLat(c).addTo(map);
+                    app.markers.push(m);
+
+                    map.flyTo({ center: c, zoom: 15 });
+                    document.getElementById('manual-tip').innerText = TXT[app.lang].manualTip;
+                }, err => {
+                    alert("GPS Error");
+                }, { enableHighAccuracy: true });
             }
         }
 
@@ -491,7 +530,7 @@
             const cel = document.createElement('div');
             cel.className = 'ctrl-btn';
             cel.innerText = app.points.length;
-            cel.style.fontSize = "12px"; cel.style.background = app.points.length === 1 ? 'white' : 'cyan'; cel.style.color = 'black';
+            cel.style.fontSize = "12px"; cel.style.background = 'cyan'; cel.style.color = 'black';
             cel.style.width = '24px'; cel.style.height = '24px';
 
             const m = new mapboxgl.Marker(cel).setLngLat(c).addTo(map);
@@ -537,6 +576,7 @@
 
         // --- AR ---
         window.startAR = () => {
+            app.navigating = true;
             document.getElementById('map-view').style.opacity = 0; // fade out map
             setTimeout(() => document.getElementById('map-view').classList.add('hidden'), 500); // then hide
             document.getElementById('ar-view').classList.add('visible');
@@ -545,25 +585,52 @@
         };
 
         window.stopAR = () => {
+            app.navigating = false;
+            window.speechSynthesis.cancel();
+
+            // KILL LOOPS
+            if (app.watchId) navigator.geolocation.clearWatch(app.watchId);
+            if (app.orientHandler) window.removeEventListener('deviceorientation', app.orientHandler);
+            app.watchId = null;
+            app.orientHandler = null;
+
+            // RESET STATE
+            app.route = null;
+            app.points = [];
+            app.markers.forEach(m => m.remove());
+            app.markers = [];
+            app.step = 0;
+
+            // Clear visual line
+            if (map.getSource('route')) {
+                map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
+            }
+
             document.getElementById('map-view').classList.remove('hidden');
             document.getElementById('map-view').style.opacity = 1;
             document.getElementById('ar-view').classList.remove('visible');
-            window.speechSynthesis.cancel();
+
+            showLanding();
         };
 
         function startLoop() {
             let lastH = 0; let lastSpk = 0; let lastK = "";
-            window.addEventListener('deviceorientation', e => {
+
+            // COMPASS
+            app.orientHandler = e => {
                 let h = e.webkitCompassHeading || (360 - e.alpha);
                 if (h) {
                     let d = h - lastH;
                     if (d > 180) d -= 360; if (d < -180) d += 360;
                     lastH = (lastH + d * 0.1 + 360) % 360;
                 }
-            });
+            };
+            window.addEventListener('deviceorientation', app.orientHandler);
 
-            navigator.geolocation.watchPosition(pos => {
-                if (!app.route) return;
+            // GPS TRACKING
+            app.watchId = navigator.geolocation.watchPosition(pos => {
+                if (!app.navigating || !app.route) return;
+
                 const lat = pos.coords.latitude; const lng = pos.coords.longitude;
                 // Simple logic: target next step
                 const steps = app.route.geometry.coordinates;
