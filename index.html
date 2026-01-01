@@ -97,10 +97,14 @@
 
         .app-logo {
             height: 40px;
-            width: auto;
+            width: 40px;
+            /* Fixed width to ensure visibility */
+            object-fit: contain;
+            background: white;
+            /* Ensure white background if transparent */
             border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            border: 2px solid var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
         }
 
         /* Config / Audio Toolbar */
@@ -456,16 +460,17 @@
             <!-- HEADER WITH LOGO -->
             <div class="header-title">
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <img src="logo.png" class="app-logo" alt="Logo">
+                    <img src="./logo.png" class="app-logo" alt="Logo">
                     <div>
                         <div style="line-height:1; font-weight:900;">BAJASTAY</div>
                         <div style="font-size:8px; opacity:0.7; letter-spacing:3px;">NAVEGACIÓN AR</div>
                     </div>
                 </div>
-                <span class="info-pill" id="status-pill">MODO RUTA</span>
+                <!-- Status Pill moved down or right -->
             </div>
 
             <div class="config-toolbar">
+                <span class="info-pill" id="status-pill" style="margin-right:auto;">MODO RUTA</span>
                 <button class="icon-btn active" id="btn-lang" onclick="toggleLang()">ES</button>
             </div>
 
@@ -537,17 +542,22 @@
         const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
         mapboxgl.accessToken = MAPBOX_TOKEN;
 
-        // --- DEFAULT ROUTE CONFIG (Corrected to User Map) ---
-        // Route: Exit Airport -> Highway North (Right) -> Turn Left at Chametla -> Straight West -> End
+        // --- DEFAULT ROUTE CONFIG (Corrected to User Red Line) ---
+        // 1. Airport [-110.3626, 24.0726]
+        // 2. Head North on Transpeninsular Hwy 1
+        // 3. Turn LEFT (West) at Intersection of Hwy 1 & Hwy to Chametla (Approx 3km North)
+        // 4. Pass El Zacatal on left
+        // 5. Turn LEFT (South) into Chunique area
         const DEFAULT_ROUTE = {
-            s: [-110.3627, 24.0730], // LAP Airport Start
+            s: [-110.3626, 24.0726], // Start: LAP Airport
             w: [
-                [-110.3585, 24.0855], // Highway North 1 (Force exit correctly)
-                [-110.3535, 24.1010], // Highway Junction (Before Turn)
-                [-110.3610, 24.1022]  // After Turn (Calle La Paz / Chametla Main)
+                [-110.3600, 24.0850], // Force North Highway
+                [-110.3533, 24.1011], // INTERSECTION: Turn Left Here (West)
+                [-110.3650, 24.1008], // Along Chametla Main Rd (West)
+                [-110.3780, 24.0980]  // Approaching Final Turn
             ],
-            d: [-110.3745, 24.0965], // Final Destination (Residential Area)
-            dn: "Airbnb Chametla"
+            d: [-110.3805, 24.0950], // DEST: Chunique Residential
+            dn: "Airbnb Chunique"
         };
 
         let app = {
