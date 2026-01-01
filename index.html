@@ -179,7 +179,6 @@
             border: 1px solid rgba(0, 243, 255, 0.3);
         }
 
-        /* Waypoint List */
         .waypoint-list {
             margin-top: 5px;
             display: flex;
@@ -219,7 +218,6 @@
             cursor: pointer;
         }
 
-        /* Bottom Action Bar */
         .bottom-bar {
             position: absolute;
             bottom: 0;
@@ -274,7 +272,6 @@
             cursor: pointer;
         }
 
-        /* Center Pin */
         #center-pin {
             position: absolute;
             top: 50%;
@@ -282,7 +279,7 @@
             transform: translate(-50%, -100%);
             z-index: 5;
             pointer-events: none;
-            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.2s;
         }
 
         #center-pin img {
@@ -322,7 +319,6 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 20px;
             border-radius: 0 20px 0 20px;
-            /* Cyber corner */
             border-left: 4px solid var(--accent-cyan);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             min-width: 150px;
@@ -348,26 +344,6 @@
             max-width: 200px;
         }
 
-        .compass-ring {
-            width: 60px;
-            height: 60px;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.4);
-        }
-
-        .compass-arrow {
-            width: 0;
-            height: 0;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-bottom: 20px solid var(--accent-red);
-            transform-origin: center 50%;
-        }
-
         .btn-exit {
             pointer-events: auto;
             background: var(--accent-red);
@@ -383,10 +359,9 @@
             transform: translateX(-50%);
         }
 
-        /* Audio Controls in AR Mode */
         .ar-controls {
             position: absolute;
-            top: 120px;
+            top: 20px;
             right: 20px;
             display: flex;
             flex-direction: column;
@@ -394,14 +369,38 @@
             pointer-events: auto;
         }
 
-        /* 3D Scene */
+        /* 2D HUD INDICATOR */
+        #hud-direction {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200px;
+            height: 200px;
+            /* Center nicely */
+            transform-origin: center center;
+            transform: translate(-50%, -50%) rotate(0deg);
+            z-index: 50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            filter: drop-shadow(0 0 15px var(--accent-cyan));
+            transition: transform 0.1s linear;
+            /* Smooth rotation */
+        }
+
+        /* The SVG Arrow shape */
+        #hud-direction svg {
+            width: 100%;
+            height: 100%;
+            fill: rgba(0, 243, 255, 0.8);
+        }
+
         a-scene {
             width: 100%;
             height: 100%;
             background: transparent !important;
         }
 
-        /* Loading Overlay */
         #loader {
             position: fixed;
             top: 0;
@@ -436,14 +435,13 @@
 
 <body>
 
-    <!-- LOADING SCREEN -->
     <div id="loader">
         <div class="spinner"></div>
         <p style="margin-top:20px; font-family: var(--font-display); color: var(--accent-cyan);">SISTEMA INICIANDO...
         </p>
     </div>
 
-    <!-- 1. MAP SELECTION / ADMIN MODE -->
+    <!-- 1. MAP SELECTION -->
     <div id="map-view">
         <div class="top-bar">
             <div class="header-title">
@@ -451,7 +449,6 @@
                 <span class="info-pill" id="status-pill">MODO RUTA</span>
             </div>
 
-            <!-- Language / Audio Settings -->
             <div class="config-toolbar">
                 <button class="icon-btn active" id="btn-lang" onclick="toggleLang()">ES</button>
             </div>
@@ -461,7 +458,6 @@
                     <button class="mode-btn active" id="btn-add-wp" onclick="setMode('waypoint')">+ PARADA</button>
                     <button class="mode-btn special" id="btn-set-dest" onclick="setMode('dest')">DESTINO 🏁</button>
                 </div>
-                <!-- Quick Locations -->
                 <div class="control-row">
                     <button class="mode-btn" onclick="setStartToAirport()" style="font-size:10px; opacity:0.8;">✈️ LAP
                         AIRPORT</button>
@@ -470,14 +466,11 @@
                 </div>
             </div>
 
-            <div class="waypoint-list" id="wp-list">
-                <!-- Dynamic Waypoints will go here -->
-            </div>
+            <div class="waypoint-list" id="wp-list"></div>
         </div>
 
         <div id="map"></div>
 
-        <!-- Center Pin for Selection -->
         <div id="center-pin">
             <img id="pin-icon" src="https://cdn-icons-png.flaticon.com/512/684/684908.png">
         </div>
@@ -496,16 +489,18 @@
                 <div class="nav-dist" id="ar-dist">0<span class="nav-unit">m</span></div>
                 <div class="nav-instr" id="ar-instr">Sigue la flecha</div>
             </div>
-
-            <!-- Mini Compass Visualization -->
-            <div class="compass-ring">
-                <div class="compass-arrow" id="hud-compass"></div>
-            </div>
         </div>
 
-        <!-- AR Controls -->
         <div class="ar-controls">
             <button class="icon-btn active" id="btn-voice-ar" onclick="toggleVoice()">🔊</button>
+        </div>
+
+        <!-- 2D HUD INDICATOR -->
+        <div id="hud-direction">
+            <!-- Simple Arrow SVG pointing UP -->
+            <svg viewBox="0 0 100 100">
+                <path d="M50 10 L10 90 L50 70 L90 90 Z" />
+            </svg>
         </div>
 
         <button class="btn-exit" onclick="stopNavigation()">SALIR / FIN</button>
@@ -515,59 +510,21 @@
     <a-scene vr-mode-ui="enabled: false" embedded renderer="logarithmicDepthBuffer: true; alpha: true;"
         arjs="sourceType: webcam; debugUIEnabled: false; videoTexture: true; displayWidth: 1280; displayHeight: 720;">
 
-        <!-- CAMERA -->
-        <a-camera gps-camera="minDistance: 1; gpsMinDistance: 1;" rotation-reader>
-            <!-- 3D ARROW RIG (Floating in front of user) -->
-            <!-- Position: 0 (center) -0.5 (below eye) -2 (2 meters forward) -->
-            <a-entity id="arrow-rig" position="0 -0.5 -2">
-
-                <!-- THE ARROW GROUP -->
-                <!-- We rotate this whole group to point the arrow -->
-                <!-- Initially points -Z (Forward) -->
-
-                <!-- Shaft (Cylinder) -->
-                <!-- Rotated 90 on X to lay flat pointing Z -->
-                <a-cylinder color="#00ff66" height="1.0" radius="0.1" rotation="90 0 0" position="0 0 0.5"
-                    material="opacity: 0.9; metalness: 0.5; roughness: 0.2">
-                </a-cylinder>
-
-                <!-- Head (Cone) -->
-                <!-- Rotated -90 on X to point Forward (-Z) -->
-                <a-cone color="#00ff66" height="0.6" radius-bottom="0.25" radius-top="0.01" rotation="-90 0 0"
-                    position="0 0 -0.2" material="opacity: 0.9; metalness: 0.5; roughness: 0.2">
-                </a-cone>
-
-                <!-- Glow Effect (Optional Ring at base) -->
-                <a-ring color="#00ff66" radius-inner="0.3" radius-outer="0.35" rotation="-90 0 0" position="0 0 1"
-                    material="opacity: 0.5; transparent: true; emissive: #00ff66; emissiveIntensity: 1">
-                </a-ring>
-
-            </a-entity>
-        </a-camera>
-
+        <a-camera gps-camera="minDistance: 1; gpsMinDistance: 1;" rotation-reader></a-camera>
         <!-- World Points (Blue Dots) -->
         <a-entity id="world-points"></a-entity>
     </a-scene>
 
     <script>
-        // CONFIG
         const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
         mapboxgl.accessToken = MAPBOX_TOKEN;
 
-        // STATE
         let app = {
-            mode: 'waypoint', // 'waypoint' or 'dest'
-            start: null,
-            waypoints: [],
-            dest: null,
-            routeGeoJSON: null,
-            navigating: false,
-            currentStep: 0,
-            lang: 'es', // 'es' or 'en'
-            voice: true
+            mode: 'waypoint', start: null, waypoints: [], dest: null,
+            routeGeoJSON: null, navigating: false, currentStep: 0,
+            lang: 'es', voice: true
         };
 
-        // TEXT DICTIONARY
         const txt = {
             es: {
                 add: "+ PARADA", dest: "DESTINO 🏁", pillW: "AGREGAR PARADAS", pillD: "FIJAR DESTINO FINAL",
@@ -581,15 +538,11 @@
             }
         };
 
-        // SETUP MAP
         const map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/dark-v11',
-            center: [-110.3626, 24.0726], // La Paz
-            zoom: 13, attributionControl: false
+            container: 'map', style: 'mapbox://styles/mapbox/dark-v11',
+            center: [-110.3626, 24.0726], zoom: 13, attributionControl: false
         });
 
-        // UI ELEMENTS
         const els = {
             mapView: document.getElementById('map-view'),
             arUI: document.getElementById('ar-ui'),
@@ -599,9 +552,8 @@
             pinIcon: document.getElementById('pin-icon'),
             arDist: document.getElementById('ar-dist'),
             arInstr: document.getElementById('ar-instr'),
-            arrowRig: document.getElementById('arrow-rig'),
+            hudArrow: document.getElementById('hud-direction'),
             worldPoints: document.getElementById('world-points'),
-            hudCompass: document.getElementById('hud-compass'),
             loader: document.getElementById('loader'),
             btnLang: document.getElementById('btn-lang'),
             btnVoice: document.getElementById('btn-voice-ar'),
@@ -609,7 +561,6 @@
             btnDest: document.getElementById('btn-set-dest')
         };
 
-        // --- MAP EVENTS & LOGIC ---
         map.on('load', () => {
             navigator.geolocation.getCurrentPosition(pos => {
                 const userLoc = [pos.coords.longitude, pos.coords.latitude];
@@ -624,15 +575,11 @@
                     els.loader.style.opacity = 0;
                     setTimeout(() => els.loader.style.display = 'none', 500);
                 }
-            }, err => {
-                alert("GPS Requerido / GPS Required"); els.loader.style.display = 'none';
-            }, { enableHighAccuracy: true });
+            }, err => { alert("GPS Requerido / GPS Required"); els.loader.style.display = 'none'; }, { enableHighAccuracy: true });
         });
 
         map.on('movestart', () => { els.pinIcon.parentNode.classList.add('pin-lift'); });
         map.on('moveend', () => { els.pinIcon.parentNode.classList.remove('pin-lift'); });
-
-        // --- CORE FUNCTIONS ---
 
         function setMode(m) {
             app.mode = m;
@@ -645,7 +592,6 @@
         function toggleLang() {
             app.lang = app.lang === 'es' ? 'en' : 'es';
             els.btnLang.innerText = app.lang.toUpperCase();
-            // Update UI text
             els.btnAdd.innerText = txt[app.lang].add;
             els.btnDest.innerText = txt[app.lang].dest;
             if (!els.btnGo.disabled) els.btnGo.innerText = txt[app.lang].start;
@@ -656,35 +602,22 @@
             app.voice = !app.voice;
             els.btnVoice.innerText = app.voice ? "🔊" : "🔇";
             els.btnVoice.classList.toggle('active', app.voice);
-            if (app.voice) speak("Audio activado");
+            if (app.voice) speak("Audio");
         }
 
         async function addCurrentCenterAsPoint() {
             const c = map.getCenter();
             const coords = [c.lng, c.lat];
             const name = await getAddrName(coords);
-
-            if (app.mode === 'waypoint') {
-                app.waypoints.push({ coords, name });
-                renderList();
-            } else if (app.mode === 'dest') {
-                app.dest = { coords, name };
-                renderList();
-                calculateRoute();
-            }
+            if (app.mode === 'waypoint') { app.waypoints.push({ coords, name }); renderList(); }
+            else if (app.mode === 'dest') { app.dest = { coords, name }; renderList(); calculateRoute(); }
         }
 
-        document.getElementById('btn-add-wp').addEventListener('click', () => {
-            if (app.mode === 'waypoint') addCurrentCenterAsPoint(); else setMode('waypoint');
-        });
-        document.getElementById('btn-set-dest').addEventListener('click', () => {
-            if (app.mode === 'dest') addCurrentCenterAsPoint(); else setMode('dest');
-        });
+        document.getElementById('btn-add-wp').addEventListener('click', () => { if (app.mode === 'waypoint') addCurrentCenterAsPoint(); else setMode('waypoint'); });
+        document.getElementById('btn-set-dest').addEventListener('click', () => { if (app.mode === 'dest') addCurrentCenterAsPoint(); else setMode('dest'); });
 
         function setStartToAirport() {
-            const lap = [-110.3626, 24.0726];
-            app.start = lap;
-            map.flyTo({ center: lap, zoom: 14 });
+            const lap = [-110.3626, 24.0726]; app.start = lap; map.flyTo({ center: lap, zoom: 14 });
             new mapboxgl.Marker({ color: '#aaaaaa' }).setLngLat(lap).addTo(map);
         }
 
@@ -713,8 +646,6 @@
         window.removeWp = (i) => { app.waypoints.splice(i, 1); renderList(); calculateRoute(); };
         window.removeDest = () => { app.dest = null; renderList(); els.btnGo.disabled = true; };
 
-        // --- ROUTING ---
-
         async function calculateRoute() {
             if (!app.start || !app.dest) return;
             let coords = [app.start];
@@ -722,25 +653,17 @@
             coords.push(app.dest.coords);
             const coordString = coords.map(c => c.join(',')).join(';');
             const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordString}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
-
             try {
-                const req = await fetch(url);
-                const json = await req.json();
+                const req = await fetch(url); const json = await req.json();
                 if (!json.routes || json.routes.length === 0) return alert("Error de ruta");
-
-                const route = json.routes[0];
-                app.routeGeoJSON = route.geometry;
-
+                const route = json.routes[0]; app.routeGeoJSON = route.geometry;
                 if (map.getSource('route')) map.getSource('route').setData(app.routeGeoJSON);
                 else map.addLayer({
                     id: 'route', type: 'line', source: { type: 'geojson', data: app.routeGeoJSON },
                     layout: { 'line-join': 'round', 'line-cap': 'round' },
                     paint: { 'line-color': '#00f3ff', 'line-width': 5, 'line-opacity': 0.8 }
                 });
-
-                els.btnGo.disabled = false;
-                els.btnGo.innerText = `${txt[app.lang].start} - ${Math.round(route.distance / 1000)}km`;
-
+                els.btnGo.disabled = false; els.btnGo.innerText = `${txt[app.lang].start} - ${Math.round(route.distance / 1000)}km`;
             } catch (e) { console.error(e); }
         }
 
@@ -751,7 +674,6 @@
             } catch { return "Punto"; }
         }
 
-        // --- SHARING ---
         window.shareRoute = () => {
             if (!app.start || !app.dest) return alert("Ruta incompleta");
             const data = { s: app.start, w: app.waypoints.map(w => w.coords), d: app.dest.coords };
@@ -762,58 +684,39 @@
 
         function loadRouteFromURL(str) {
             try {
-                const data = JSON.parse(atob(str));
-                app.start = data.s;
+                const data = JSON.parse(atob(str)); app.start = data.s;
                 app.dest = { coords: data.d, name: "Destino" };
                 app.waypoints = data.w.map(c => ({ coords: c, name: "Punto" }));
                 els.loader.innerHTML = '<div class="spinner"></div><p style="color:white; margin-top:10px;">CARGANDO RUTA...</p>';
-                renderList();
-                calculateRoute().then(() => { els.loader.style.display = 'none'; });
+                renderList(); calculateRoute().then(() => { els.loader.style.display = 'none'; });
             } catch (e) { els.loader.style.display = 'none'; alert("Error URL"); }
         }
 
-        // --- AR & AUDIO ---
-
         window.startNavigation = () => {
-            if (!app.routeGeoJSON) return;
-            app.navigating = true;
-            els.mapView.style.opacity = 0;
-            // Ask for orientation permission on iOS
+            if (!app.routeGeoJSON) return; app.navigating = true; els.mapView.style.opacity = 0;
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission().then(r => { if (r != 'granted') alert("Permiso denegado"); }).catch(console.error);
             }
-            speak(app.lang === 'es' ? "Iniciando navegación. Sigue la flecha." : "Starting navigation. Follow the arrow.");
+            speak(app.lang === 'es' ? "Iniciando. Sigue la flecha." : "Starting. Follow the arrow.");
             setTimeout(() => { els.mapView.style.display = 'none'; els.arUI.style.display = 'block'; }, 500);
             startARLoop();
         };
 
-        window.stopNavigation = () => {
-            app.navigating = false;
-            els.arUI.style.display = 'none';
-            els.mapView.style.display = 'flex';
-            els.mapView.style.opacity = 1;
-        };
+        window.stopNavigation = () => { app.navigating = false; els.arUI.style.display = 'none'; els.mapView.style.display = 'flex'; els.mapView.style.opacity = 1; };
 
-        let lastDeviceHeading = 0;
-        let lastSpeakTime = 0;
-        let lastInstruction = "";
+        let lastDeviceHeading = 0; let lastSpeakTime = 0; let lastInstruction = "";
 
         function startARLoop() {
             window.addEventListener('deviceorientation', (e) => {
                 let heading = 0;
-                if (e.webkitCompassHeading) heading = e.webkitCompassHeading;
-                else if (e.alpha) heading = 360 - e.alpha;
-
-                const alpha = 0.1;
-                let diff = heading - lastDeviceHeading;
+                if (e.webkitCompassHeading) heading = e.webkitCompassHeading; else if (e.alpha) heading = 360 - e.alpha;
+                const alpha = 0.1; let diff = heading - lastDeviceHeading;
                 if (diff < -180) diff += 360; if (diff > 180) diff -= 360;
-                lastDeviceHeading += diff * alpha;
-                lastDeviceHeading = (lastDeviceHeading + 360) % 360;
+                lastDeviceHeading += diff * alpha; lastDeviceHeading = (lastDeviceHeading + 360) % 360;
             });
 
             navigator.geolocation.watchPosition(pos => {
                 if (!app.navigating) return;
-
                 const userLat = pos.coords.latitude; const userLng = pos.coords.longitude;
                 const path = app.routeGeoJSON.coordinates;
                 let target = path[app.currentStep];
@@ -821,72 +724,58 @@
                 const d = distInMeters(userLat, userLng, target[1], target[0]);
                 els.arDist.innerHTML = Math.round(d) + '<span class="nav-unit">m</span>';
 
-                // Check arrival at step
                 if (d < 15) {
-                    if (app.currentStep < path.length - 1) {
-                        app.currentStep++;
-                        // Sound feedback could go here
-                    } else {
-                        const msg = txt[app.lang].arrive;
-                        els.arInstr.innerText = msg;
-                        speak(msg);
-                    }
+                    if (app.currentStep < path.length - 1) { app.currentStep++; }
+                    else { const msg = txt[app.lang].arrive; els.arInstr.innerText = msg; speak(msg); }
                 }
 
-                // Arrow Rotation
+                // ARROW LOGIC
                 const bearing = calcBearing(userLat, userLng, target[1], target[0]);
                 let relative = bearing - lastDeviceHeading;
-                els.arrowRig.object3D.rotation.y = -relative * (Math.PI / 180);
-                els.hudCompass.style.transform = `rotate(${-relative}deg)`;
 
-                // Instructions & Audio
-                let msg = "";
-                let threshold = 30; // degrees
+                // ROTATE HUD ARROW (2D)
+                // If relative is +90 (Right), rotate CSS 90deg (Right)
+                // translate must be kept (-50%, -50%) to stay centered
+                els.hudArrow.style.transform = `translate(-50%, -50%) rotate(${relative}deg)`;
+
+                let msg = ""; let threshold = 30;
                 if (Math.abs(relative) < threshold) msg = txt[app.lang].straight;
                 else if (relative < 0) msg = txt[app.lang].left;
                 else msg = txt[app.lang].right;
-
                 els.arInstr.innerText = msg;
 
-                // Smart Speaking (Only if instruction changes or significant time passes)
                 const now = Date.now();
                 if (msg !== lastInstruction && (now - lastSpeakTime > 5000)) {
-                    speak(msg);
-                    lastInstruction = msg;
-                    lastSpeakTime = now;
+                    speak(msg); lastInstruction = msg; lastSpeakTime = now;
+                    // Flash Arrow Green if Straight
+                    if (msg === txt[app.lang].straight) els.hudArrow.style.filter = "drop-shadow(0 0 20px #00ff66)";
+                    else els.hudArrow.style.filter = "drop-shadow(0 0 15px #00f3ff)";
                 }
 
             }, err => console.error(err), { enableHighAccuracy: true, maximumAge: 0 });
         }
 
         function speak(text) {
-            if (!app.voice) return;
-            window.speechSynthesis.cancel();
+            if (!app.voice) return; window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(text);
             u.lang = app.lang === 'es' ? 'es-MX' : 'en-US';
-            u.rate = 1.0;
-            window.speechSynthesis.speak(u);
+            u.rate = 1.0; window.speechSynthesis.speak(u);
         }
 
         function distInMeters(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
-            const φ1 = lat1 * Math.PI / 180;
-            const φ2 = lat2 * Math.PI / 180;
-            const Δφ = (lat2 - lat1) * Math.PI / 180;
-            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            const φ1 = lat1 * Math.PI / 180; const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180; const Δλ = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
         function calcBearing(startLat, startLng, destLat, destLng) {
-            const startLatRad = startLat * (Math.PI / 180);
-            const startLngRad = startLng * (Math.PI / 180);
-            const destLatRad = destLat * (Math.PI / 180);
-            const destLngRad = destLng * (Math.PI / 180);
+            const startLatRad = startLat * (Math.PI / 180); const startLngRad = startLng * (Math.PI / 180);
+            const destLatRad = destLat * (Math.PI / 180); const destLngRad = destLng * (Math.PI / 180);
             const y = Math.sin(destLngRad - startLngRad) * Math.cos(destLatRad);
             const x = Math.cos(startLatRad) * Math.sin(destLatRad) - Math.sin(startLatRad) * Math.cos(destLatRad) * Math.cos(destLngRad - startLngRad);
-            let brng = Math.atan2(y, x);
-            brng = brng * (180 / Math.PI);
+            let brng = Math.atan2(y, x); brng = brng * (180 / Math.PI);
             return (brng + 360) % 360;
         }
     </script>
