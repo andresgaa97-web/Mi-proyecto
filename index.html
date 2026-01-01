@@ -96,15 +96,20 @@
         }
 
         .app-logo {
-            height: 40px;
-            width: 40px;
-            /* Fixed width to ensure visibility */
+            height: 50px;
+            width: 50px;
+            min-width: 50px;
+            /* Crucial for mobile flex containers */
+            flex-shrink: 0;
+            /* Prevent shrinking */
             object-fit: contain;
-            background: white;
-            /* Ensure white background if transparent */
+            /* Show whole logo */
+            background-color: white;
+            /* Ensure visibility against dark bg *
             border-radius: 50%;
             border: 2px solid var(--accent-cyan);
             box-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+            z-index: 50; /* Ensure on top */
         }
 
         /* Config / Audio Toolbar */
@@ -460,20 +465,13 @@
             <!-- HEADER WITH LOGO -->
             <div class="header-title">
                 <div style="display:flex; align-items:center; gap:12px;">
-                    <img src="./logo.jpeg" class="app-logo" alt="BajaStay"
-                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                    <!-- Fallback Circle -->
-                    <div
-                        style="display:none; width:45px; height:45px; background:white; border-radius:50%; align-items:center; justify-content:center; border:2px solid var(--accent-cyan); color:#ff6b35; font-weight:900; font-size:12px;">
-                        BS</div>
-
+                    <img src="logo.jpeg" class="app-logo" alt="BajaStay Logo">
                     <div style="display:flex; flex-direction:column;">
                         <span style="font-size:18px; font-weight:900; line-height:1;">BAJASTAY</span>
                         <span style="font-size:9px; opacity:0.8; letter-spacing:2px; color:var(--accent-cyan);">AR
                             NAVIGATION</span>
                     </div>
                 </div>
-                <!-- Status Pill moved to toolbar for space -->
             </div>
 
             <div class="config-toolbar">
