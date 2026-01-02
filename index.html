@@ -224,18 +224,20 @@
         }
 
         .ctrl-btn {
-            width: 44px;
-            height: 44px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
-            background: rgba(20, 20, 20, 0.8);
+            background: rgba(20, 20, 20, 0.9);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
             color: white;
-            font-size: 16px;
+            font-size: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            pointer-events: auto;
+            /* Garantizar click */
         }
 
         .bottom-card {
@@ -441,10 +443,12 @@
                     <div class="big-instr" id="ar-instr">Iniciando...</div>
                     <div style="font-size:14px; opacity:0.8;" id="ar-next">-- m</div>
                 </div>
-                <div style="display:flex; gap:10px;">
-                    <button class="ctrl-btn" id="btn-voice" onclick="toggleVoice()">🔊</button>
+                <div style="display:flex; gap:15px; padding-right:10px;">
+                    <button class="ctrl-btn" id="btn-lang-ar"
+                        onclick="event.stopPropagation(); toggleLang()">ES</button>
+                    <button class="ctrl-btn" id="btn-voice" onclick="event.stopPropagation(); toggleVoice()">🔊</button>
                     <button class="ctrl-btn" style="background:#ff3b30; border-color: #ff3b30;"
-                        onclick="stopAR()">✕</button>
+                        onclick="event.stopPropagation(); stopAR()">✕</button>
                 </div>
             </div>
 
@@ -477,10 +481,65 @@
         // ¡IMPORTANTE! Protege este token en producción restringiendo la URL en Mapbox Dashboard
         mapboxgl.accessToken = 'pk.eyJ1IjoiYW5keWc5NyIsImEiOiJjbWpwN20zcGoyYjFzM2ZveTIzZ2s5Mm56In0.FsNncSP8DrD6zTXpw0MaEg';
 
+        // USER PROVIDED GEOJSON (STATIC ROUTE)
+        const DEFAULT_ROUTE_GEOJSON = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": { "type": "Point", "coordinates": [-110.3675884755777, 24.07620957367486, 19.59901810551265] },
+                    "properties": { "name": "Origen - Aeropuerto la Paz" },
+                    "id": "0D11914C703CB4D832C0"
+                },
+                {
+                    "type": "Feature",
+                    "geometry": { "type": "Point", "coordinates": [-110.391038445351, 24.09540285146841, 4.487690660529326] },
+                    "properties": { "name": "Destino - Airbnb BajaStays Rentals" },
+                    "id": "0498022F833CB4D8E454"
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [
+                            [-110.3676061849273, 24.07622858497015, 0], [-110.3675472830153, 24.07661897630843, 0], [-110.3677690683074, 24.0768711004984, 0],
+                            [-110.3688447687849, 24.07702726387739, 0], [-110.3691804052901, 24.07719566737829, 0], [-110.3693387833746, 24.07768299232134, 0],
+                            [-110.3693291883587, 24.07792177827368, 0], [-110.3665929537034, 24.10371032330687, 0], [-110.3664918936345, 24.10510869981672, 0],
+                            [-110.3664107193627, 24.10556814346124, 0], [-110.3661028090201, 24.10626749746943, 0], [-110.3655477373088, 24.10681103355262, 0],
+                            [-110.3651509852586, 24.10704606986485, 0], [-110.3649707532042, 24.10708111685407, 0], [-110.3647205936599, 24.10694809684832, 0],
+                            [-110.3646534678784, 24.10671941561371, 0], [-110.3647690908585, 24.10652723707523, 0], [-110.3651616586128, 24.10634409139388, 0],
+                            [-110.3667445092549, 24.10563801417024, 0], [-110.3803260784353, 24.0999716297604, 0], [-110.3821653573059, 24.09923618643921, 0],
+                            [-110.3930933118167, 24.09772319671085, 0]
+                        ]
+                    },
+                    "properties": { "name": "Ruta 1 Airbnb BajaStays Rentals" },
+                    "id": "0424687EEE3CB4DB28B0"
+                },
+                {
+                    "type": "Feature",
+                    "geometry": { "type": "Point", "coordinates": [-110.3930924146773, 24.09772014879889, 4.183889859599872] },
+                    "properties": { "name": "Desviacion / Cruce" },
+                    "id": "0522BE7E153CB4DDD151"
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [
+                            [-110.3930436743562, 24.09754761703125, 0], [-110.3928194657311, 24.0962260369505, 0], [-110.3926876313522, 24.09618915901778, 0],
+                            [-110.3923589171539, 24.09620761028096, 0], [-110.3922991407109, 24.09615135129986, 0], [-110.392173137542, 24.09518587995925, 0],
+                            [-110.3910261027907, 24.09532131661534, 0], [-110.3910372199984, 24.09539877384319, 0]
+                        ]
+                    },
+                    "properties": { "name": "Ruta 2 Airbnb" },
+                    "id": "0CA3FFA34F3CB4EA002F"
+                }
+            ]
+        };
+
         const ROUTE_DEF = [
-            [-110.3626, 24.0726], // Aeropuerto
-            [-110.393072, 24.097741], // Chametla
-            [-110.392168, 24.095156]  // BajaStay
+            [-110.367588, 24.076210], // Aeropuerto
+            [-110.391038, 24.095403]  // BajaStay
         ];
 
         // --- STATE ---
@@ -495,13 +554,10 @@
             navigating: false,
             watchId: null,
             wakeLock: null,
-
-            // Suavizado (Lerp)
             currentVisualHeading: 0,
             targetHeading: 0,
             compassOffset: 0,
-
-            miniMap: null // INSTANCIA DEL MINI MAPA
+            miniMap: null
         };
 
         const TXT = {
@@ -515,7 +571,7 @@
             style: 'mapbox://styles/mapbox/dark-v11',
             center: ROUTE_DEF[0],
             zoom: 12,
-            pitch: 45, // Inclinación para 3D
+            pitch: 45,
             bearing: 0
         });
 
@@ -524,7 +580,6 @@
             document.getElementById('loader').style.opacity = '0';
             setTimeout(() => document.getElementById('loader').remove(), 500);
 
-            // Capa de edificios 3D para look profesional
             const layers = map.getStyle().layers;
             const labelLayerId = layers.find(l => l.type === 'symbol' && l.layout['text-field']).id;
 
@@ -562,9 +617,18 @@
 
         function toggleLang() {
             app.lang = app.lang === 'es' ? 'en' : 'es';
-            document.getElementById('btn-lang').innerText = app.lang.toUpperCase();
-            // Actualizar textos dinámicos si es necesario
-            if (app.mode === 'default') document.getElementById('txt-dest-name').innerText = TXT[app.lang].dest;
+            const val = app.lang.toUpperCase();
+
+            // Actualizar botones en ambos modos
+            const b1 = document.getElementById('btn-lang');
+            const b2 = document.getElementById('btn-lang-ar');
+            if (b1) b1.innerText = val;
+            if (b2) b2.innerText = val;
+
+            if (app.mode === 'default') {
+                const destName = document.getElementById('txt-dest-name');
+                if (destName) destName.innerText = TXT[app.lang].dest;
+            }
         }
 
         // --- MAP LOGIC ---
@@ -577,7 +641,7 @@
             if (app.mode === 'default') {
                 document.getElementById('manual-tip').style.display = 'none';
                 document.getElementById('txt-dest-name').innerText = TXT[app.lang].dest;
-                plotRoute(ROUTE_DEF);
+                plotStaticRoute();
             } else {
                 // Modo Manual
                 document.getElementById('manual-tip').style.display = 'block';
@@ -596,7 +660,7 @@
 
         function addUserMarker(coords) {
             const el = document.createElement('div');
-            el.className = 'user-marker'; // Estilo pulsante
+            el.className = 'user-marker';
             const m = new mapboxgl.Marker(el).setLngLat(coords).addTo(map);
             app.markers.push(m);
         }
@@ -616,6 +680,52 @@
             if (app.points.length >= 2) plotRoute(app.points);
         });
 
+        // PARSE USER GEOJSON (STATIC)
+        function plotStaticRoute() {
+            // 1. Extraer LineStrings
+            let coordinates = [];
+            DEFAULT_ROUTE_GEOJSON.features.forEach(f => {
+                if (f.geometry.type === 'LineString') {
+                    // mapbox espera solo array de coords, las unimos
+                    coordinates.push(...f.geometry.coordinates);
+                }
+            });
+
+            // 2. Extraer Puntos (Start/End Markers)
+            DEFAULT_ROUTE_GEOJSON.features.forEach(f => {
+                if (f.geometry.type === 'Point') {
+                    addUserMarker(f.geometry.coordinates);
+                }
+            });
+
+            // 3. Crear Objeto Route Compatible con App
+            const totalDist = calcTotalDist(coordinates); // metros
+            const totalTime = (totalDist / 11.11); // ~40km/h = 11.11 m/s
+
+            app.route = {
+                distance: totalDist,
+                duration: totalTime,
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                }
+            };
+
+            // 4. Render
+            renderRouteOnMap(app.route.geometry);
+            updateRouteInfo(totalDist, totalTime);
+        }
+
+        // HELPER: Distancia total array coords
+        function calcTotalDist(coords) {
+            let d = 0;
+            for (let i = 0; i < coords.length - 1; i++) {
+                d += dist(coords[i][1], coords[i][0], coords[i + 1][1], coords[i + 1][0]);
+            }
+            return d; // dist ya devuelve metros
+        }
+
+        // MAPBOX API (Manual Mode)
         async function plotRoute(coords) {
             const str = coords.map(c => c.join(',')).join(';');
             try {
@@ -623,32 +733,33 @@
                 const data = await res.json();
                 const route = data.routes[0];
                 app.route = route;
-
-                // Dibujar Línea
-                const geo = route.geometry;
-                if (map.getSource('route')) {
-                    map.getSource('route').setData(geo);
-                } else {
-                    map.addLayer({
-                        id: 'route', type: 'line', source: { type: 'geojson', data: geo },
-                        layout: { 'line-join': 'round', 'line-cap': 'round' },
-                        paint: { 'line-color': '#00F3FF', 'line-width': 6, 'line-opacity': 0.9 }
-                    });
-                }
-
-                // Ajustar vista
-                const b = new mapboxgl.LngLatBounds();
-                coords.forEach(p => b.extend(p));
-                map.fitBounds(b, { padding: 80 });
-
-                // UI Info
-                const min = Math.round(route.duration / 60);
-                const km = (route.distance / 1000).toFixed(1);
-                document.getElementById('txt-time').innerText = min + " min";
-                document.getElementById('txt-dist').innerText = km + " km";
-                document.getElementById('btn-go').disabled = false;
-
+                renderRouteOnMap(route.geometry);
+                updateRouteInfo(route.distance, route.duration);
             } catch (e) { console.error(e); }
+        }
+
+        function renderRouteOnMap(geo) {
+            if (map.getSource('route')) {
+                map.getSource('route').setData(geo);
+            } else {
+                map.addLayer({
+                    id: 'route', type: 'line', source: { type: 'geojson', data: geo },
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': '#00F3FF', 'line-width': 6, 'line-opacity': 0.9 }
+                });
+            }
+            // Fit bounds
+            const b = new mapboxgl.LngLatBounds();
+            geo.coordinates.forEach(p => b.extend(p));
+            map.fitBounds(b, { padding: 80 });
+        }
+
+        function updateRouteInfo(distanceMeters, durationSeconds) {
+            const min = Math.round(durationSeconds / 60);
+            const km = (distanceMeters / 1000).toFixed(1);
+            document.getElementById('txt-time').innerText = min + " min";
+            document.getElementById('txt-dist').innerText = km + " km";
+            document.getElementById('btn-go').disabled = false;
         }
 
         // --- AR & CORE NAVIGATION ---
@@ -672,6 +783,10 @@
         };
 
         async function startAR() {
+            // Limpieza preventiva
+            if (app.watchId) navigator.geolocation.clearWatch(app.watchId);
+            window.speechSynthesis.cancel();
+
             app.navigating = true;
 
             // Wake Lock (Pantalla encendida)
@@ -739,16 +854,32 @@
             window.speechSynthesis.cancel();
 
             // Liberar recursos
-            if (app.wakeLock) app.wakeLock.release();
-            if (app.watchId) navigator.geolocation.clearWatch(app.watchId);
+            if (app.wakeLock) {
+                app.wakeLock.release();
+                app.wakeLock = null;
+            }
+            if (app.watchId) {
+                navigator.geolocation.clearWatch(app.watchId);
+                app.watchId = null;
+            }
             window.removeEventListener('deviceorientation', handleOrientation);
+            window.speechSynthesis.cancel();
+
+            console.log("AR Navegación Detenida");
 
             // Reset UI
             document.getElementById('map-view').classList.remove('hidden');
             document.getElementById('map-view').style.opacity = 1;
             document.getElementById('ar-view').classList.remove('visible');
+
+            // LIMPIEZA TOTAL DE RUTA
             app.route = null;
             app.step = 0;
+            app.points = [];
+
+            // Eliminar marcadores del mapa
+            app.markers.forEach(m => m.remove());
+            app.markers = [];
 
             // Destruir Mini Mapa
             if (app.miniMap) {
@@ -756,7 +887,7 @@
                 app.miniMap = null;
             }
 
-            // Limpiar ruta visual del mapa
+            // Limpiar línea de ruta del mapa principal
             if (map.getSource('route')) {
                 map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
             }
@@ -856,7 +987,7 @@
         // --- UTILS ---
         function speak(text) {
             window.speechSynthesis.cancel();
-            if (!app.voice) return; // Mute check
+            if (!app.voice || !app.navigating) return; // Mute check o navegación terminada
             const u = new SpeechSynthesisUtterance(text);
             u.lang = app.lang === 'es' ? 'es-MX' : 'en-US';
             window.speechSynthesis.speak(u);
@@ -864,10 +995,13 @@
 
         function toggleVoice() {
             app.voice = !app.voice;
-            const btn = document.getElementById('btn-voice');
-            btn.innerText = app.voice ? "🔊" : "🔇";
-            btn.style.opacity = app.voice ? "1" : "0.5";
             if (!app.voice) window.speechSynthesis.cancel();
+
+            const btn = document.getElementById('btn-voice');
+            if (btn) {
+                btn.innerText = app.voice ? "🔊" : "🔇";
+                btn.style.opacity = app.voice ? "1" : "0.5";
+            }
         }
 
         // Mate Geográfica
@@ -889,4 +1023,4 @@
     </script>
 </body>
 
-</html>
+</html>s
