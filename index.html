@@ -152,6 +152,43 @@
             flex-shrink: 0;
         }
 
+        /* === PERSONALIZATION === */
+        .input-group {
+            margin-bottom: 25px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .name-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 15px;
+            color: white;
+            font-family: var(--font);
+            font-size: 16px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .name-input:focus {
+            border-color: var(--accent);
+            background: rgba(0, 243, 255, 0.05);
+        }
+
         /* === MAP UI === */
         #map-view {
             position: absolute;
@@ -383,6 +420,11 @@
         </div>
 
         <div style="flex:1;">
+            <div class="input-group">
+                <label id="lbl-name">Tu Nombre</label>
+                <input type="text" id="user-name" class="name-input" placeholder="..." autocomplete="off">
+            </div>
+
             <p style="margin-bottom:20px; font-size:12px; font-weight:700; color:#888;">SELECCIONA TU RUTA</p>
 
             <div class="route-card selected" id="opt-default" onclick="selectMode('default')">
@@ -402,15 +444,15 @@
             </div>
         </div>
 
-        <button class="btn-start" onclick="confirmSelection()">CONTINUAR</button>
+        <button class="btn-start" onclick="confirmSelection()" id="btn-confirm">CONTINUAR</button>
     </div>
 
     <div id="map-view">
         <div class="fixed-header">
-            <div class="mini-logo-wrapper" onclick="showLanding()"></div>
+            <div class="mini-logo-wrapper" onclick="forceStopAndShowLanding()"></div>
             <div class="controls">
-                <button class="ctrl-btn" id="btn-lang" onclick="toggleLang()">ES</button>
-                <button class="ctrl-btn" onclick="showLanding()">⚙️</button>
+                <button class="ctrl-btn" id="btn-lang" onclick="handleLangToggle()">ES</button>
+                <button class="ctrl-btn" onclick="forceStopAndShowLanding()">⚙️</button>
             </div>
         </div>
 
@@ -446,13 +488,10 @@
                     <div style="font-size:14px; opacity:0.8;" id="ar-next">-- m</div>
                 </div>
                 <div style="display:flex; gap:15px; padding-right:10px;">
-                    <button class="ctrl-btn" id="btn-lang-ar" onmousedown="event.stopPropagation(); toggleLang()"
-                        ontouchstart="event.stopPropagation(); event.preventDefault(); toggleLang()">ES</button>
-                    <button class="ctrl-btn" id="btn-voice" onmousedown="event.stopPropagation(); toggleVoice()"
-                        ontouchstart="event.stopPropagation(); event.preventDefault(); toggleVoice()">🔊</button>
+                    <button class="ctrl-btn" id="btn-lang-ar" onclick="handleLangToggle()">ES</button>
+                    <button class="ctrl-btn" id="btn-voice" onclick="handleVoiceToggle()">🔊</button>
                     <button class="ctrl-btn" style="background:#ff3b30; border-color: #ff3b30;"
-                        onmousedown="event.stopPropagation(); stopAR()"
-                        ontouchstart="event.stopPropagation(); event.preventDefault(); stopAR()">✕</button>
+                        onclick="stopAR()">✕</button>
                 </div>
             </div>
 
@@ -565,8 +604,26 @@
         };
 
         const TXT = {
-            es: { btn: "CONTINUAR", go: "INICIAR RUTA", manualTip: "Toca para añadir Waypoint/Destino", dest: "BajaStay Airbnb", welcome: "Bienvenido. Siga la flecha.", inst: { s: "Sigue recto", l: "Gira izquierda", r: "Gira derecha", a: "Has llegado" } },
-            en: { btn: "CONTINUE", go: "START ROUTE", manualTip: "Tap to add Waypoint/Dest", dest: "BajaStay Airbnb", welcome: "Welcome. Follow the arrow.", inst: { s: "Go straight", l: "Turn left", r: "Turn right", a: "Arrived" } }
+            es: {
+                btn: "CONTINUAR",
+                go: "INICIAR RUTA",
+                manualTip: "Toca para añadir Waypoint/Destino",
+                dest: "BajaStay Airbnb",
+                welcome: "Bienvenido a La Paz, ",
+                bye: "Muchas gracias por escogernos, que tengan una estancia excelente.",
+                inst: { s: "Sigue recto", l: "Gira izquierda", r: "Gira derecha", a: "Has llegado a tu destino" },
+                lbl: "Tu Nombre"
+            },
+            en: {
+                btn: "CONTINUE",
+                go: "START ROUTE",
+                manualTip: "Tap to add Waypoint/Dest",
+                dest: "BajaStay Airbnb",
+                welcome: "Welcome to La Paz, ",
+                bye: "Thank you for choosing us, have an excellent stay.",
+                inst: { s: "Go straight", l: "Turn left", r: "Turn right", a: "You have arrived at your destination" },
+                lbl: "Your Name"
+            }
         };
 
         // --- MAP SETUP ---
@@ -619,7 +676,22 @@
             document.getElementById('landing-overlay').classList.remove('closed');
         }
 
-        function toggleLang() {
+        function forceStopAndShowLanding() {
+            if (app.navigating) stopAR();
+            else {
+                // Limpieza profunda preventiva
+                app.points = [];
+                app.markers.forEach(m => m.remove());
+                app.markers = [];
+                app.route = null;
+                if (map.getSource('route')) {
+                    map.getSource('route').setData({ type: 'FeatureCollection', features: [] });
+                }
+                showLanding();
+            }
+        }
+
+        function handleLangToggle() {
             app.lang = app.lang === 'es' ? 'en' : 'es';
             const val = app.lang.toUpperCase();
 
@@ -629,6 +701,8 @@
             if (b1) b1.innerText = val;
             if (b2) b2.innerText = val;
 
+            document.getElementById('lbl-name').innerText = TXT[app.lang].lbl;
+
             if (app.mode === 'default') {
                 const destName = document.getElementById('txt-dest-name');
                 if (destName) destName.innerText = TXT[app.lang].dest;
@@ -637,10 +711,14 @@
 
         // --- MAP LOGIC ---
         function initMapLogic() {
-            // Limpieza
+            // Limpieza Profunda
             app.markers.forEach(m => m.remove());
             app.markers = [];
             app.points = [];
+            app.route = null;
+            if (map.getSource('route')) {
+                map.getSource('route').setData({ type: 'FeatureCollection', features: [] });
+            }
 
             if (app.mode === 'default') {
                 document.getElementById('manual-tip').style.display = 'none';
@@ -731,10 +809,15 @@
 
         // MAPBOX API (Manual Mode)
         async function plotRoute(coords) {
+            const currentMode = app.mode; // Guardar modo actual
             const str = coords.map(c => c.join(',')).join(';');
             try {
                 const res = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${str}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`);
                 const data = await res.json();
+
+                // SOLO actualizar si seguimos en el mismo modo manual
+                if (app.mode !== 'manual' || app.mode !== currentMode) return;
+
                 const route = data.routes[0];
                 app.route = route;
                 renderRouteOnMap(route.geometry);
@@ -805,7 +888,8 @@
             setTimeout(() => document.getElementById('map-view').classList.add('hidden'), 500);
             document.getElementById('ar-view').classList.add('visible');
 
-            speak(TXT[app.lang].welcome);
+            const name = document.getElementById('user-name').value || "";
+            speak(TXT[app.lang].welcome + name);
 
             // Iniciar Loops
             window.addEventListener('deviceorientation', handleOrientation);
@@ -868,12 +952,15 @@
         }
 
         window.stopAR = () => {
+            console.log("CERRANDO NAVEGACIÓN...");
             app.navigating = false;
 
-            // 1. Detener Audio Totalmente
+            // 1. Detener Audio e instruccion
             window.speechSynthesis.cancel();
+            document.getElementById('ar-instr').innerText = "Cerrando...";
+            document.getElementById('ar-next').innerText = "-- m";
 
-            // 2. Detener GPS y Orientación
+            // 2. Detener GPS y Orientación (Limpiar watchers)
             if (app.watchId !== null) {
                 navigator.geolocation.clearWatch(app.watchId);
                 app.watchId = null;
@@ -886,12 +973,12 @@
                 app.wakeLock = null;
             }
 
-            // 4. Reset de Datos
+            // 4. Reset de Datos Crítico
             app.route = null;
             app.step = 0;
             app.points = [];
 
-            // 5. Limpieza Visual
+            // 5. Limpieza Visual Total
             app.markers.forEach(m => m.remove());
             app.markers = [];
 
@@ -904,7 +991,7 @@
                 map.getSource('route').setData({ type: 'FeatureCollection', features: [] });
             }
 
-            // 6. Retorno UI
+            // 6. Retorno UI Limpio
             document.getElementById('ar-view').classList.remove('visible');
             document.getElementById('map-view').classList.remove('hidden');
             setTimeout(() => {
@@ -973,7 +1060,16 @@
             let k = "s"; // straight
             if (relativeAngle < -45) k = "l"; // left
             if (relativeAngle > 45) k = "r"; // right
-            if (distToTarget < 20 && app.step > steps.length - 3) k = "a"; // arrived
+
+            const isLastStep = app.step >= steps.length - 1;
+            if (distToTarget < 20 && isLastStep) {
+                k = "a";
+                if (app.navigating) {
+                    app.navigating = false;
+                    speak(TXT[app.lang].inst[k] + ". " + TXT[app.lang].bye);
+                    setTimeout(() => stopAR(), 8000); // Dar tiempo a hablar
+                }
+            }
 
             const txt = TXT[app.lang].inst[k];
             if (document.getElementById('ar-instr').innerText !== txt) {
@@ -1019,8 +1115,9 @@
             window.speechSynthesis.speak(u);
         }
 
-        function toggleVoice() {
+        function handleVoiceToggle() {
             app.voice = !app.voice;
+            console.log("Audio Toggle:", app.voice);
             if (!app.voice) window.speechSynthesis.cancel();
 
             const btn = document.getElementById('btn-voice');
