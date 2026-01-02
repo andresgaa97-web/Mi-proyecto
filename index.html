@@ -201,6 +201,7 @@
         }
 
         #map-view.hidden {
+            display: none !important;
             pointer-events: none;
         }
 
@@ -252,6 +253,81 @@
         #mini-map {
             width: 100%;
             height: 100%;
+        }
+
+        /* === SEARCH & LAYERS === */
+        #search-container {
+            position: absolute;
+            top: 90px;
+            left: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #search-input {
+            width: 100%;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 15px 20px;
+            color: white;
+            font-family: var(--font);
+            backdrop-filter: blur(10px);
+            outline: none;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .layer-btn {
+            position: absolute;
+            top: 150px;
+            right: 20px;
+            z-index: 1000;
+            display: none;
+        }
+
+        /* === ONBOARDING === */
+        #onboarding-tip {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 4000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .tip-card {
+            background: var(--glass);
+            padding: 40px;
+            border-radius: 32px;
+            border: 1px solid var(--glass-border);
+            max-width: 320px;
+        }
+
+        /* === SUMMARY SCREEN === */
+        #summary-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--primary);
+            z-index: 5000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .summary-stat {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--accent);
+            margin: 10px 0;
         }
 
         .controls {
@@ -351,6 +427,7 @@
         }
 
         #ar-view.visible {
+            display: block !important;
             visibility: visible;
             opacity: 1;
             background: transparent;
@@ -456,6 +533,12 @@
             </div>
         </div>
 
+        <div id="search-container">
+            <input type="text" id="search-input" placeholder="Buscar dirección..." onchange="handleSearch(this.value)">
+        </div>
+
+        <button class="ctrl-btn layer-btn" id="btn-layer" onclick="toggleStyle()">🛰️</button>
+
         <div id="map" style="flex:1;"></div>
 
         <div class="bottom-card">
@@ -473,6 +556,33 @@
             <p style="font-size:10px; opacity:0.5; text-align:center; margin-top:10px; display:none;" id="manual-tip">
                 Toca el mapa para añadir puntos</p>
         </div>
+    </div>
+
+    <div id="onboarding-tip" onclick="this.style.display='none'">
+        <div class="tip-card">
+            <div style="font-size:40px; margin-bottom:20px;">🗺️</div>
+            <h2 style="margin:0 0 10px 0;">Modo Manual</h2>
+            <p style="font-size:14px; opacity:0.7; margin-bottom:25px;">Toca dos o más puntos en el mapa para trazar tu
+                propia ruta personalizada.</p>
+            <button class="btn-start" style="margin:0;">ENTENDIDO</button>
+        </div>
+    </div>
+
+    <div id="summary-screen">
+        <div style="font-size:60px; margin-bottom:20px;">🏁</div>
+        <h1>¡Has llegado!</h1>
+        <p style="opacity:0.6; margin-bottom:40px;">Tu viaje a BajaStay ha finalizado.</p>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; width:100%; margin-bottom:40px;">
+            <div>
+                <div style="font-size:11px; opacity:0.5;">DISTANCIA</div>
+                <div class="summary-stat" id="sum-dist">7.2 km</div>
+            </div>
+            <div>
+                <div style="font-size:11px; opacity:0.5;">TIEMPO</div>
+                <div class="summary-stat" id="sum-time">11 min</div>
+            </div>
+        </div>
+        <button class="btn-start" onclick="location.reload()">VOLVER AL INICIO</button>
     </div>
 
     <div id="ar-view">
@@ -600,7 +710,9 @@
             currentVisualHeading: 0,
             targetHeading: 0,
             compassOffset: 0,
-            miniMap: null
+            currentStyle: 'dark',
+            navStartTime: 0,
+            onboarded: false
         };
 
         const TXT = {
@@ -612,7 +724,11 @@
                 welcome: "Bienvenido a La Paz, ",
                 bye: "Muchas gracias por escogernos, que tengan una estancia excelente.",
                 inst: { s: "Sigue recto", l: "Gira izquierda", r: "Gira derecha", a: "Has llegado a tu destino" },
-                lbl: "Tu Nombre"
+                lbl: "Tu Nombre",
+                dest: 'Destino Seleccionado',
+                ar_inst: 'Indicaciones AR',
+                onboarding: 'Toca el mapa para añadir puntos',
+                search: 'Buscar dirección...'
             },
             en: {
                 btn: "CONTINUE",
@@ -622,7 +738,11 @@
                 welcome: "Welcome to La Paz, ",
                 bye: "Thank you for choosing us, have an excellent stay.",
                 inst: { s: "Go straight", l: "Turn left", r: "Turn right", a: "You have arrived at your destination" },
-                lbl: "Your Name"
+                lbl: "Your Name",
+                dest: 'Selected Destination',
+                ar_inst: 'AR Directions',
+                onboarding: 'Tap the map to add points',
+                search: 'Search address...'
             }
         };
 
@@ -664,34 +784,90 @@
         function selectMode(m) {
             app.mode = m;
             document.getElementById('opt-default').classList.toggle('selected', m === 'default');
-            document.getElementById('opt-manual').classList.toggle('selected', m === 'manual');
+            document.getElementById('opt-manual').classList.toggle('selected', app.mode === 'manual');
+
+            // UI Search/Layer Toggle
+            document.getElementById('search-container').style.display = (app.mode === 'manual') ? 'flex' : 'none';
+            document.getElementById('btn-layer').style.display = (app.mode === 'manual') ? 'flex' : 'none';
+            document.getElementById('search-input').placeholder = TXT[app.lang].search;
+        }
+
+        async function handleSearch(query) {
+            if (!query) return;
+            try {
+                const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&limit=1`);
+                const data = await resp.json();
+                if (data.features && data.features.length > 0) {
+                    const [lng, lat] = data.features[0].center;
+                    map.flyTo({ center: [lng, lat], zoom: 16 });
+                }
+            } catch (e) { console.error("Search error:", e); }
+        }
+
+        function toggleStyle() {
+            app.currentStyle = app.currentStyle === 'dark' ? 'satellite' : 'dark';
+            const styleUrl = app.currentStyle === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/satellite-v9';
+            map.setStyle(styleUrl);
+            document.getElementById('btn-layer').innerText = app.currentStyle === 'dark' ? '🛰️' : '🏙️';
         }
 
         function confirmSelection() {
-            document.getElementById('landing-overlay').classList.add('closed');
-            initMapLogic();
+            // Mostrar Onboarding si es manual por primera vez
+            if (app.mode === 'manual' && !app.onboarded) {
+                document.getElementById('onboarding-tip').style.display = 'flex';
+                app.onboarded = true;
+            } else {
+                document.getElementById('landing-overlay').classList.add('closed');
+                initMapLogic();
+            }
         }
 
         function showLanding() {
             document.getElementById('landing-overlay').classList.remove('closed');
         }
 
-        function forceStopAndShowLanding() {
-            if (app.navigating) stopAR();
-            else {
-                // Limpieza profunda preventiva
-                app.points = [];
-                app.markers.forEach(m => m.remove());
-                app.markers = [];
-                app.route = null;
-                if (map.getSource('route')) {
-                    map.getSource('route').setData({ type: 'FeatureCollection', features: [] });
-                }
-                showLanding();
+        // Función Maestra de Limpieza
+        function fullCleanup() {
+            console.log("LIMPIEZA TOTAL DE APP");
+            app.navigating = false;
+            app.points = [];
+            app.markers.forEach(m => m.remove());
+            app.markers = [];
+            app.route = null;
+            app.step = 0;
+            document.getElementById('summary-screen').style.display = 'none'; // Hide summary screen
+
+            if (app.miniMap) {
+                app.miniMap.remove();
+                app.miniMap = null;
+            }
+
+            if (map.getSource('route')) {
+                map.getSource('route').setData({ type: 'FeatureCollection', features: [] });
+            }
+
+            window.speechSynthesis.cancel();
+            if (app.watchId !== null) {
+                navigator.geolocation.clearWatch(app.watchId);
+                app.watchId = null;
+            }
+            window.removeEventListener('deviceorientation', handleOrientation);
+            if (app.wakeLock) {
+                app.wakeLock.release().catch(() => { });
+                app.wakeLock = null;
             }
         }
 
-        function handleLangToggle() {
+        function forceStopAndShowLanding() {
+            fullCleanup();
+            document.getElementById('ar-view').classList.remove('visible');
+            document.getElementById('map-view').classList.remove('hidden');
+            document.getElementById('map-view').style.opacity = 1;
+            showLanding();
+        }
+
+        function handleLangToggle(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
             app.lang = app.lang === 'es' ? 'en' : 'es';
             const val = app.lang.toUpperCase();
 
@@ -702,6 +878,8 @@
             if (b2) b2.innerText = val;
 
             document.getElementById('lbl-name').innerText = TXT[app.lang].lbl;
+            document.getElementById('search-input').placeholder = TXT[app.lang].search;
+
 
             if (app.mode === 'default') {
                 const destName = document.getElementById('txt-dest-name');
@@ -885,10 +1063,13 @@
 
             // Transición UI
             document.getElementById('map-view').style.opacity = 0;
-            setTimeout(() => document.getElementById('map-view').classList.add('hidden'), 500);
+            document.getElementById('map-view').classList.add('hidden'); // Inmediato para evitar clics
             document.getElementById('ar-view').classList.add('visible');
+            document.getElementById('ar-instr').innerText = "Calculando...";
+            document.getElementById('ar-next').innerText = "-- m";
 
             const name = document.getElementById('user-name').value || "";
+            app.navStartTime = Date.now();
             speak(TXT[app.lang].welcome + name);
 
             // Iniciar Loops
@@ -952,46 +1133,11 @@
         }
 
         window.stopAR = () => {
-            console.log("CERRANDO NAVEGACIÓN...");
-            app.navigating = false;
-
-            // 1. Detener Audio e instruccion
-            window.speechSynthesis.cancel();
             document.getElementById('ar-instr').innerText = "Cerrando...";
             document.getElementById('ar-next').innerText = "-- m";
 
-            // 2. Detener GPS y Orientación (Limpiar watchers)
-            if (app.watchId !== null) {
-                navigator.geolocation.clearWatch(app.watchId);
-                app.watchId = null;
-            }
-            window.removeEventListener('deviceorientation', handleOrientation);
+            fullCleanup();
 
-            // 3. Liberar WakeLock
-            if (app.wakeLock) {
-                app.wakeLock.release().catch(() => { });
-                app.wakeLock = null;
-            }
-
-            // 4. Reset de Datos Crítico
-            app.route = null;
-            app.step = 0;
-            app.points = [];
-
-            // 5. Limpieza Visual Total
-            app.markers.forEach(m => m.remove());
-            app.markers = [];
-
-            if (app.miniMap) {
-                app.miniMap.remove();
-                app.miniMap = null;
-            }
-
-            if (map.getSource('route')) {
-                map.getSource('route').setData({ type: 'FeatureCollection', features: [] });
-            }
-
-            // 6. Retorno UI Limpio
             document.getElementById('ar-view').classList.remove('visible');
             document.getElementById('map-view').classList.remove('hidden');
             setTimeout(() => {
@@ -1010,12 +1156,38 @@
             app.compassOffset = heading;
         }
 
-        function handleGPS(pos) {
+        async function getStreetName(lng, lat) {
+            try {
+                const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}&types=address,poi`;
+                const resp = await fetch(url);
+                const data = await resp.json();
+                if (data.features && data.features.length > 0) return data.features[0].text;
+            } catch (e) { }
+            return "";
+        }
+
+        async function handleGPS(pos) {
             if (!app.navigating || !app.route) return;
 
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
             const steps = app.route.geometry.coordinates;
+
+            // ... logica de llegada ...
+            const dFinal = dist(lat, lng, app.points[app.points.length - 1][1], app.points[app.points.length - 1][0]);
+            if (dFinal < 15) {
+                app.navigating = false;
+                const name = document.getElementById('user-name').value || "";
+                speak(TXT[app.lang].bye + name);
+
+                // Mostrar Resumen Final
+                setTimeout(() => {
+                    document.getElementById('sum-dist').innerText = document.getElementById('txt-dist').innerText;
+                    document.getElementById('sum-time').innerText = document.getElementById('txt-time').innerText;
+                    document.getElementById('summary-screen').style.display = 'flex';
+                }, 4000);
+                return;
+            }
 
             // Verificar si llegamos al paso actual
             let target = steps[app.step];
@@ -1025,6 +1197,18 @@
             if (distToTarget < 30 && app.step < steps.length - 1) {
                 app.step++;
                 target = steps[app.step]; // Actualizar objetivo
+
+                // ... logica de instrucciones mejorada ...
+                const p2 = steps[app.step];
+                const newStreet = await getStreetName(p2[0], p2[1]);
+                // Assuming 'straight', 'left', 'right' are defined in TXT.inst
+                // This logic needs to be more robust for actual turn instructions
+                const baseInst = TXT[app.lang].inst.s; // Default to straight
+                const fullText = newStreet ? `${baseInst} en ${newStreet}` : baseInst;
+
+                document.getElementById('ar-instr').innerText = fullText;
+                const timeSinceStart = Date.now() - app.navStartTime;
+                if (app.voice && timeSinceStart > 4000) speak(fullText);
             }
 
             // ACTUALIZAR MINI MAPA
@@ -1074,7 +1258,10 @@
             const txt = TXT[app.lang].inst[k];
             if (document.getElementById('ar-instr').innerText !== txt) {
                 document.getElementById('ar-instr').innerText = txt;
-                if (app.voice) speak(txt);
+
+                // Prioridad al saludo: solo hablar instrucciones si pasaron 4 segundos
+                const timeSinceStart = Date.now() - app.navStartTime;
+                if (app.voice && timeSinceStart > 4000) speak(txt);
             }
         }
 
@@ -1115,7 +1302,8 @@
             window.speechSynthesis.speak(u);
         }
 
-        function handleVoiceToggle() {
+        function handleVoiceToggle(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
             app.voice = !app.voice;
             console.log("Audio Toggle:", app.voice);
             if (!app.voice) window.speechSynthesis.cancel();
