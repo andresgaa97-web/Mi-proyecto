@@ -945,16 +945,24 @@
                 app.miniMap.setCenter([lng, lat]);
             }
 
-            // Calcular hacia dónde debe apuntar la flecha (Bearing Real)
-            const targetBearing = bearing(lat, lng, target[1], target[0]);
-
-            // El objetivo visual de la flecha es: Bearing Destino - Mi Brújula
-            // Guardamos esto globalmente para que el loop de animación lo suavice
-            // NOTA: Calculamos el bearing absoluto, el loop restará la brújula
-            app.targetHeading = targetBearing;
+            // --- CÁLCULO DE PROGRESO EN TIEMPO REAL ---
+            // 1. Distancia desde ubicación actual al punto actual
+            let remainingDist = dist(lat, lng, steps[app.step][1], steps[app.step][0]);
+            // 2. Sumar el resto de los segmentos hasta el final
+            for (let i = app.step; i < steps.length - 1; i++) {
+                remainingDist += dist(steps[i][1], steps[i][0], steps[i + 1][1], steps[i + 1][0]);
+            }
+            // 3. Calcular tiempo (Usando 40km/h promedio = 11.11 m/s)
+            const remainingTimeSec = remainingDist / 11.11;
+            const min = Math.ceil(remainingTimeSec / 60);
+            const km = (remainingDist / 1000).toFixed(1);
 
             // Actualizar UI Texto
-            document.getElementById('ar-next').innerText = Math.round(distToTarget) + " m";
+            document.getElementById('ar-next').innerText = `${km} km · ${min} min`;
+
+            // Calcular hacia dónde debe apuntar la flecha (Bearing Real)
+            const targetBearing = bearing(lat, lng, target[1], target[0]);
+            app.targetHeading = targetBearing;
 
             // Instrucciones
             let relativeAngle = targetBearing - app.compassOffset;
