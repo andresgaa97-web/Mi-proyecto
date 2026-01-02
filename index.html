@@ -198,18 +198,19 @@
         /* MINI MAP CONTAINER */
         #mini-map-container {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 120px;
-            height: 120px;
-            border-radius: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.5);
-            background: rgba(0, 0, 0, 0.5);
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            bottom: 25px;
+            right: 25px;
+            width: 160px;
+            /* Mas grande */
+            height: 160px;
+            /* Mas grande */
+            border-radius: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            background: rgba(0, 0, 0, 0.7);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
             overflow: hidden;
             z-index: 200;
             pointer-events: none;
-            /* No interaction */
         }
 
         #mini-map {
@@ -326,6 +327,7 @@
             pointer-events: none;
             display: flex;
             flex-direction: column;
+            z-index: 1000;
         }
 
         .ar-top {
@@ -333,6 +335,7 @@
             display: flex;
             justify-content: space-between;
             pointer-events: auto;
+            z-index: 1001;
         }
 
         .instr-box {
@@ -444,11 +447,13 @@
                     <div style="font-size:14px; opacity:0.8;" id="ar-next">-- m</div>
                 </div>
                 <div style="display:flex; gap:15px; padding-right:10px;">
-                    <button class="ctrl-btn" id="btn-lang-ar"
-                        onclick="event.stopPropagation(); toggleLang()">ES</button>
-                    <button class="ctrl-btn" id="btn-voice" onclick="event.stopPropagation(); toggleVoice()">🔊</button>
+                    <button class="ctrl-btn" id="btn-lang-ar" onmousedown="event.stopPropagation(); toggleLang()"
+                        ontouchstart="event.stopPropagation(); event.preventDefault(); toggleLang()">ES</button>
+                    <button class="ctrl-btn" id="btn-voice" onmousedown="event.stopPropagation(); toggleVoice()"
+                        ontouchstart="event.stopPropagation(); event.preventDefault(); toggleVoice()">🔊</button>
                     <button class="ctrl-btn" style="background:#ff3b30; border-color: #ff3b30;"
-                        onclick="event.stopPropagation(); stopAR()">✕</button>
+                        onmousedown="event.stopPropagation(); stopAR()"
+                        ontouchstart="event.stopPropagation(); event.preventDefault(); stopAR()">✕</button>
                 </div>
             </div>
 
@@ -837,13 +842,27 @@
                         paint: { 'line-color': '#00F3FF', 'line-width': 6 } // Thicker
                     });
 
-                    // 2. USER MARKER (Fixed Center)
+                    // 2. MARKERS EN MINI MAPA (Si es default)
+                    if (app.mode === 'default') {
+                        DEFAULT_ROUTE_GEOJSON.features.forEach(f => {
+                            if (f.geometry.type === 'Point') {
+                                const elPoint = document.createElement('div');
+                                elPoint.style.width = '8px'; elPoint.style.height = '8px';
+                                elPoint.style.backgroundColor = f.properties.name.includes('Destino') ? '#ff3b30' : '#ffffff';
+                                elPoint.style.borderRadius = '50%';
+                                elPoint.style.border = '1px solid black';
+                                new mapboxgl.Marker(elPoint).setLngLat(f.geometry.coordinates).addTo(app.miniMap);
+                            }
+                        });
+                    }
+
+                    // 3. USER MARKER (Fixed Center)
                     const el = document.createElement('div');
-                    el.style.width = '14px'; el.style.height = '14px';
+                    el.style.width = '16px'; el.style.height = '16px';
                     el.style.backgroundColor = '#00F3FF';
                     el.style.borderRadius = '50%';
                     el.style.border = '3px solid white';
-                    el.style.boxShadow = '0 0 10px #00F3FF';
+                    el.style.boxShadow = '0 0 15px #00F3FF';
                     new mapboxgl.Marker(el).setLngLat(app.miniMap.getCenter()).addTo(app.miniMap);
                 }
             });
@@ -851,48 +870,48 @@
 
         window.stopAR = () => {
             app.navigating = false;
+
+            // 1. Detener Audio Totalmente
             window.speechSynthesis.cancel();
 
-            // Liberar recursos
-            if (app.wakeLock) {
-                app.wakeLock.release();
-                app.wakeLock = null;
-            }
-            if (app.watchId) {
+            // 2. Detener GPS y Orientación
+            if (app.watchId !== null) {
                 navigator.geolocation.clearWatch(app.watchId);
                 app.watchId = null;
             }
             window.removeEventListener('deviceorientation', handleOrientation);
-            window.speechSynthesis.cancel();
 
-            console.log("AR Navegación Detenida");
+            // 3. Liberar WakeLock
+            if (app.wakeLock) {
+                app.wakeLock.release().catch(() => { });
+                app.wakeLock = null;
+            }
 
-            // Reset UI
-            document.getElementById('map-view').classList.remove('hidden');
-            document.getElementById('map-view').style.opacity = 1;
-            document.getElementById('ar-view').classList.remove('visible');
-
-            // LIMPIEZA TOTAL DE RUTA
+            // 4. Reset de Datos
             app.route = null;
             app.step = 0;
             app.points = [];
 
-            // Eliminar marcadores del mapa
+            // 5. Limpieza Visual
             app.markers.forEach(m => m.remove());
             app.markers = [];
 
-            // Destruir Mini Mapa
             if (app.miniMap) {
                 app.miniMap.remove();
                 app.miniMap = null;
             }
 
-            // Limpiar línea de ruta del mapa principal
             if (map.getSource('route')) {
-                map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
+                map.getSource('route').setData({ type: 'FeatureCollection', features: [] });
             }
 
-            showLanding();
+            // 6. Retorno UI
+            document.getElementById('ar-view').classList.remove('visible');
+            document.getElementById('map-view').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('map-view').style.opacity = 1;
+                showLanding();
+            }, 100);
         };
 
         // 2. Lógica de Orientación y Suavizado
@@ -1023,4 +1042,4 @@
     </script>
 </body>
 
-</html>s
+</html>
