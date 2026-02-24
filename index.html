@@ -1131,10 +1131,9 @@
                 }
 
                 // Etiquetas de Bottom Card
-                const bc = document.querySelector('.bottom-card');
-                if (bc) {
-                    const bcDivs = bc.querySelectorAll('div > div:first-child > div:first-child');
-                    if (bcDivs.length > 0) bcDivs[0].innerText = t.destination;
+                const destNameEl = document.getElementById('txt-dest-name');
+                if (destNameEl && destNameEl.previousElementSibling) {
+                    destNameEl.previousElementSibling.innerText = t.destination;
                 }
 
                 // Onboarding 
