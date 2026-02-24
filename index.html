@@ -300,6 +300,7 @@
             padding: 15px 20px;
             color: white;
             font-family: var(--font);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             outline: none;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
@@ -366,6 +367,7 @@
             height: 50px;
             border-radius: 50%;
             background: rgba(20, 20, 20, 0.9);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             border: 2px solid rgba(255, 255, 255, 0.3);
             color: white;
@@ -387,6 +389,7 @@
             padding: 24px;
             border: 1px solid var(--glass-border);
             z-index: 500;
+            -webkit-backdrop-filter: blur(20px);
             backdrop-filter: blur(20px);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
         }
@@ -481,6 +484,7 @@
             border-radius: 20px;
             border: 1px solid var(--glass-border);
             border-left: 5px solid var(--accent);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
             max-width: 70%;
@@ -803,7 +807,8 @@
             compassOffset: 0,
             currentStyle: 'dark',
             navStartTime: 0,
-            onboarded: false
+            onboarded: false,
+            utterances: [] // Reference array to prevent Safari Audio GC
         };
 
         let currentRouteData = ROUTE_LA_PAZ; // Ruta seleccionada por defecto
@@ -1333,13 +1338,20 @@
 
         // --- AR & CORE NAVIGATION ---
         window.attemptStartAR = async () => {
+            // FIX SAFARI/iOS: Initializing speech engine synchronously on user click to unlock audio
+            if ('speechSynthesis' in window) {
+                const s = new SpeechSynthesisUtterance('');
+                s.volume = 0;
+                window.speechSynthesis.speak(s);
+            }
+
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 try {
                     const permission = await DeviceOrientationEvent.requestPermission();
                     if (permission === 'granted') {
                         startAR();
                     } else {
-                        alert("Se requiere permiso de orientación para la brújula.");
+                        alert(app.lang === 'en' ? "Compass orientation permission denied." : "Se requiere permiso de orientación para la brújula.");
                     }
                 } catch (e) { alert(e); }
             } else {
@@ -1621,10 +1633,23 @@
 
         // --- UTILS ---
         function speak(text) {
-            window.speechSynthesis.cancel();
             if (!app.voice || !app.navigating) return;
+
+            // Safari iOS Bug: Sometimes audio pauses permanently unless resumed prior to cancel
+            window.speechSynthesis.resume();
+            window.speechSynthesis.cancel();
+
             const u = new SpeechSynthesisUtterance(text);
             u.lang = app.lang === 'es' ? 'es-MX' : 'en-US';
+            u.rate = 1.0;
+
+            // Safari iOS Bug: Audio stops abruptly if utterance is Garbage Collected.
+            app.utterances.push(u);
+            u.onend = function () {
+                const i = app.utterances.indexOf(u);
+                if (i > -1) app.utterances.splice(i, 1);
+            };
+
             window.speechSynthesis.speak(u);
         }
 
