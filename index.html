@@ -201,8 +201,9 @@
         }
 
         #map-view.hidden {
-            display: none !important;
-            pointer-events: none;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
         }
 
         .fixed-header {
@@ -491,7 +492,7 @@
 
         .arrow-wrap {
             position: absolute;
-            top: 50%;
+            top: 40%;
             left: 50%;
             transform: translate(-50%, -50%);
             width: 200px;
@@ -499,6 +500,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 500;
         }
     </style>
 </head>
@@ -517,6 +519,8 @@
                 <h1>BAJASTAY</h1>
                 <p>RENTALS</p>
             </div>
+            <button class="ctrl-btn" style="margin-left: auto; width: 40px; height: 40px; font-size: 14px;"
+                id="btn-lang-landing" onclick="handleLangToggle(event)">ES</button>
         </div>
 
         <div style="flex:1; overflow-y: auto;">
@@ -968,6 +972,7 @@
             } else {
                 document.getElementById('landing-overlay').classList.add('closed');
                 initMapLogic();
+                setTimeout(() => { if (map) map.resize(); }, 300);
             }
         }
 
@@ -994,10 +999,17 @@
                 map.getSource('route').setData({ type: 'FeatureCollection', features: [] });
             }
 
+            // Eliminar bounds viejos forzadamente
+            app.currentBounds = null;
+
             window.speechSynthesis.cancel();
             if (app.watchId !== null) {
                 navigator.geolocation.clearWatch(app.watchId);
                 app.watchId = null;
+            }
+            if (app.simInterval) {
+                clearInterval(app.simInterval);
+                app.simInterval = null;
             }
             window.removeEventListener('deviceorientation', handleOrientation);
             if (app.wakeLock) {
@@ -1008,10 +1020,21 @@
 
         function forceStopAndShowLanding() {
             fullCleanup();
+
+            // Reset minimap container inline styles if moved
+            const mmc = document.getElementById('mini-map-container');
+            if (mmc) {
+                mmc.style.top = '';
+                mmc.style.left = '5%';
+                mmc.style.bottom = '30px';
+                mmc.style.right = '';
+            }
+
             document.getElementById('ar-view').classList.remove('visible');
             document.getElementById('map-view').classList.remove('hidden');
             document.getElementById('map-view').style.opacity = 1;
             showLanding();
+            setTimeout(() => { if (map) map.resize(); }, 150);
         }
 
         function handleLangToggle(e) {
@@ -1022,10 +1045,22 @@
             // Actualizar botones en ambos modos
             const b1 = document.getElementById('btn-lang');
             const b2 = document.getElementById('btn-lang-ar');
+            const b3 = document.getElementById('btn-lang-landing');
             if (b1) b1.innerText = val;
             if (b2) b2.innerText = val;
+            if (b3) b3.innerText = val;
 
             updateUIForLang();
+        }
+
+        function formatTime(seconds) {
+            const totalMin = Math.round(seconds / 60);
+            if (totalMin >= 60) {
+                const h = Math.floor(totalMin / 60);
+                const m = totalMin % 60;
+                return `${h} h ${m} min`;
+            }
+            return `${totalMin} min`;
         }
 
         function updateUIForLang() {
@@ -1141,6 +1176,16 @@
             app.markers.push(m);
         }
 
+        function addStaticMarker(coords, isDest = false) {
+            const el = document.createElement('div');
+            el.style.width = '14px'; el.style.height = '14px';
+            el.style.backgroundColor = isDest ? '#ff3b30' : '#ffffff';
+            el.style.borderRadius = '50%';
+            el.style.border = '3px solid black';
+            const m = new mapboxgl.Marker(el).setLngLat(coords).addTo(map);
+            app.markers.push(m);
+        }
+
         map.on('click', e => {
             if (app.mode !== 'manual') return;
             const c = [e.lngLat.lng, e.lngLat.lat];
@@ -1168,14 +1213,15 @@
                 }
                 if (f.geometry && f.geometry.type === 'Point') {
                     hasPoints = true;
-                    addUserMarker(f.geometry.coordinates);
+                    const isDest = f.properties && f.properties.name && f.properties.name.toLowerCase().includes('destino');
+                    addStaticMarker(f.geometry.coordinates, isDest);
                 }
             });
 
             // Auto-generar puntos de partida y llegada para tu map.geojson si no los trae
             if (!hasPoints && coordinates.length > 0) {
-                addUserMarker(coordinates[0]);
-                addUserMarker(coordinates[coordinates.length - 1]);
+                addStaticMarker(coordinates[0], false);
+                addStaticMarker(coordinates[coordinates.length - 1], true);
             }
 
             // Crear Objeto Route Compatible con App
@@ -1193,6 +1239,24 @@
 
             renderRouteOnMap(app.route.geometry);
             updateRouteInfo(totalDist, totalTime);
+        }
+
+        function renderRouteOnMap(geo) {
+            if (map.getSource('route')) {
+                map.getSource('route').setData(geo);
+            } else {
+                map.addLayer({
+                    id: 'route', type: 'line', source: { type: 'geojson', data: geo },
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': '#00F3FF', 'line-width': 6, 'line-opacity': 0.9 }
+                });
+            }
+            // Delay fitBounds so map.resize() finishes first
+            setTimeout(() => {
+                const b = new mapboxgl.LngLatBounds();
+                geo.coordinates.forEach(p => b.extend(p));
+                map.fitBounds(b, { padding: 80, duration: 2000 });
+            }, 350);
         }
 
         function calcTotalDist(coords) {
@@ -1220,25 +1284,18 @@
             } catch (e) { console.error(e); }
         }
 
-        function renderRouteOnMap(geo) {
-            if (map.getSource('route')) {
-                map.getSource('route').setData(geo);
-            } else {
-                map.addLayer({
-                    id: 'route', type: 'line', source: { type: 'geojson', data: geo },
-                    layout: { 'line-join': 'round', 'line-cap': 'round' },
-                    paint: { 'line-color': '#00F3FF', 'line-width': 6, 'line-opacity': 0.9 }
-                });
-            }
-            const b = new mapboxgl.LngLatBounds();
-            geo.coordinates.forEach(p => b.extend(p));
-            map.fitBounds(b, { padding: 80 });
+        function formatTime(seconds) {
+            const minutes = Math.round(seconds / 60);
+            if (minutes < 60) return minutes + " min";
+            const hours = Math.floor(minutes / 60);
+            const remainingMinutes = minutes % 60;
+            return `${hours} h ${remainingMinutes} min`;
         }
 
         function updateRouteInfo(distanceMeters, durationSeconds) {
-            const min = Math.round(durationSeconds / 60);
+            const timeStr = formatTime(durationSeconds);
             const km = (distanceMeters / 1000).toFixed(1);
-            document.getElementById('txt-time').innerText = min + " min";
+            document.getElementById('txt-time').innerText = timeStr;
             document.getElementById('txt-dist').innerText = km + " km";
             document.getElementById('btn-go').disabled = false;
         }
@@ -1261,9 +1318,11 @@
 
         async function startAR() {
             if (app.watchId) navigator.geolocation.clearWatch(app.watchId);
+            if (app.simInterval) clearInterval(app.simInterval);
             window.speechSynthesis.cancel();
 
             app.navigating = true;
+            app.simulationMode = false;
 
             try {
                 if ('wakeLock' in navigator) {
@@ -1286,10 +1345,12 @@
             speak(TXT[app.lang][welcomeKey] + name);
 
             window.addEventListener('deviceorientation', handleOrientation);
-            app.watchId = navigator.geolocation.watchPosition(handleGPS, null, { enableHighAccuracy: true, maximumAge: 1000 });
 
             initMiniMap();
             requestAnimationFrame(renderLoop);
+
+            // Siempre rastrear la ubicación real del usuario con GPS (sin simulaciones)
+            app.watchId = navigator.geolocation.watchPosition(handleGPS, null, { enableHighAccuracy: true, maximumAge: 1000 });
         }
 
         let userInteractingWithMiniMap = false;
@@ -1339,15 +1400,24 @@
                                 new mapboxgl.Marker(elPoint).setLngLat(f.geometry.coordinates).addTo(app.miniMap);
                             }
                         });
+
+                        // Ajustar los límites del mini map a la nueva ruta
+                        const mb = new mapboxgl.LngLatBounds();
+                        app.route.geometry.coordinates.forEach(p => mb.extend(p));
+                        app.miniMap.fitBounds(mb, { padding: 40, animate: false });
                     }
 
-                    const el = document.createElement('div');
-                    el.style.width = '16px'; el.style.height = '16px';
-                    el.style.backgroundColor = '#00F3FF';
-                    el.style.borderRadius = '50%';
-                    el.style.border = '3px solid white';
-                    el.style.boxShadow = '0 0 15px #00F3FF';
-                    new mapboxgl.Marker(el).setLngLat(app.miniMap.getCenter()).addTo(app.miniMap);
+                    if (app.mode === 'manual') {
+                        const el = document.createElement('div');
+                        el.style.width = '16px'; el.style.height = '16px';
+                        el.style.backgroundColor = '#00F3FF';
+                        el.style.borderRadius = '50%';
+                        el.style.border = '3px solid white';
+                        el.style.boxShadow = '0 0 15px #00F3FF';
+                        app.arMiniMarker = new mapboxgl.Marker(el).setLngLat(app.miniMap.getCenter()).addTo(app.miniMap);
+                    } else {
+                        app.arMiniMarker = null;
+                    }
                 }
             });
         }
@@ -1372,6 +1442,7 @@
             setTimeout(() => {
                 document.getElementById('map-view').style.opacity = 1;
                 showLanding();
+                if (map) map.resize();
             }, 100);
         };
 
@@ -1402,7 +1473,7 @@
             let endPoint = app.mode === 'manual' ? app.points[app.points.length - 1] : steps[steps.length - 1];
             const dFinal = dist(lat, lng, endPoint[1], endPoint[0]);
 
-            if (dFinal < 15) {
+            if (dFinal < 40) {
                 app.navigating = false;
                 const name = document.getElementById('user-name').value || "";
                 speak(TXT[app.lang].bye + name);
@@ -1415,25 +1486,42 @@
                 return;
             }
 
+            let prevStep = app.step;
             let target = steps[app.step];
-            const distToTarget = dist(lat, lng, target[1], target[0]);
 
-            if (distToTarget < 30 && app.step < steps.length - 1) {
-                app.step++;
+            if (pos.isSim) {
+                app.step = pos.simStepIdx;
                 target = steps[app.step];
-
-                const p2 = steps[app.step];
-                const newStreet = await getStreetName(p2[0], p2[1]);
-                const baseInst = TXT[app.lang].inst.s;
-                const fullText = newStreet ? `${baseInst} ${TXT[app.lang].on} ${newStreet}` : baseInst;
-
-                document.getElementById('ar-instr').innerText = fullText;
-                const timeSinceStart = Date.now() - app.navStartTime;
-                if (app.voice && timeSinceStart > 4000) speak(fullText);
+            } else {
+                const distToTarget = dist(lat, lng, target[1], target[0]);
+                if (distToTarget < 60 && app.step < steps.length - 1) {
+                    app.step++;
+                    target = steps[app.step];
+                }
             }
 
-            if (app.miniMap && !userInteractingWithMiniMap) {
+            if (app.step > prevStep && app.step < steps.length - 1) {
+                const p2 = steps[app.step];
+                // Debounce name fetching against multiple simulated skips
+                if (!app.isFetchingStreet) {
+                    app.isFetchingStreet = true;
+                    getStreetName(p2[0], p2[1]).then(newStreet => {
+                        app.isFetchingStreet = false;
+                        const baseInst = TXT[app.lang].inst.s;
+                        const fullText = newStreet ? `${baseInst} ${TXT[app.lang].on} ${newStreet}` : baseInst;
+
+                        document.getElementById('ar-instr').innerText = fullText;
+                        const timeSinceStart = Date.now() - app.navStartTime;
+                        if (app.voice && timeSinceStart > 4000 && !pos.isSim) speak(fullText);
+                    });
+                }
+            }
+
+            if (app.miniMap && !userInteractingWithMiniMap && app.mode === 'manual') {
                 app.miniMap.setCenter([lng, lat]);
+            }
+            if (app.arMiniMarker) {
+                app.arMiniMarker.setLngLat([lng, lat]);
             }
 
             let remainingDist = dist(lat, lng, steps[app.step][1], steps[app.step][0]);
@@ -1442,10 +1530,10 @@
             }
 
             const remainingTimeSec = remainingDist / 11.11;
-            const min = Math.ceil(remainingTimeSec / 60);
+            const timeStr = formatTime(remainingTimeSec);
             const km = (remainingDist / 1000).toFixed(1);
 
-            document.getElementById('ar-next').innerText = `${km} km · ${min} min`;
+            document.getElementById('ar-next').innerText = `${km} km · ${timeStr}`;
 
             const targetBearing = bearing(lat, lng, target[1], target[0]);
             app.targetHeading = targetBearing;
@@ -1459,7 +1547,7 @@
             if (relativeAngle > 45) k = "r";
 
             const isLastStep = app.step >= steps.length - 1;
-            if (distToTarget < 20 && isLastStep) {
+            if (dFinal < 40 && isLastStep) {
                 k = "a";
                 if (app.navigating) {
                     app.navigating = false;
@@ -1469,10 +1557,10 @@
             }
 
             const txt = TXT[app.lang].inst[k];
-            if (document.getElementById('ar-instr').innerText !== txt) {
+            if (!document.getElementById('ar-instr').innerText.startsWith(txt)) {
                 document.getElementById('ar-instr').innerText = txt;
                 const timeSinceStart = Date.now() - app.navStartTime;
-                if (app.voice && timeSinceStart > 4000) speak(txt);
+                if (app.voice && timeSinceStart > 4000 && !pos.isSim) speak(txt);
             }
         }
 
