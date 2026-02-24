@@ -476,18 +476,22 @@
         }
 
         .instr-box {
-            background: rgba(0, 0, 0, 0.85);
-            padding: 15px 20px;
-            border-radius: 16px;
-            border-left: 4px solid var(--accent);
-            backdrop-filter: blur(5px);
+            background: rgba(20, 20, 20, 0.95);
+            padding: 18px 24px;
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            border-left: 5px solid var(--accent);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            max-width: 70%;
         }
 
         .big-instr {
-            font-size: 20px;
-            font-weight: 700;
+            font-size: 22px;
+            font-weight: 800;
             color: white;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            line-height: 1.2;
         }
 
         .arrow-wrap {
@@ -630,9 +634,11 @@
             <div class="ar-top">
                 <div class="instr-box">
                     <div class="big-instr" id="ar-instr">Iniciando...</div>
-                    <div style="font-size:14px; opacity:0.8;" id="ar-next">-- m</div>
+                    <div style="font-size:14px; font-weight:700; color:var(--accent);" id="ar-stats">
+                        <span id="ar-next-dist">--</span> · <span id="ar-next-time">--</span>
+                    </div>
                 </div>
-                <div style="display:flex; gap:15px; padding-right:10px;">
+                <div style="display:flex; flex-direction:column; gap:10px; padding-right:10px; align-items:flex-end;">
                     <button class="ctrl-btn" id="btn-lang-ar" onclick="handleLangToggle()">ES</button>
                     <button class="ctrl-btn" id="btn-voice" onclick="handleVoiceToggle()">🔊</button>
                     <button class="ctrl-btn" style="background:#ff3b30; border-color: #ff3b30;"
@@ -1078,11 +1084,26 @@
 
             // Landing: Rutas
             const lp = document.querySelector('#opt-lapaz');
-            if (lp) { lp.querySelector('h3').innerText = t.route_lapaz; lp.querySelector('p').innerText = t.route_lapaz_desc; }
+            if (lp) {
+                const lpTitle = lp.querySelector('h3');
+                const lpDesc = lp.querySelector('p');
+                if (lpTitle) lpTitle.innerText = t.route_lapaz;
+                if (lpDesc) lpDesc.innerText = t.route_lapaz_desc;
+            }
             const sj = document.querySelector('#opt-sjc');
-            if (sj) { sj.querySelector('h3').innerText = t.route_sjc; sj.querySelector('p').innerText = t.route_sjc_desc; }
+            if (sj) {
+                const sjTitle = sj.querySelector('h3');
+                const sjDesc = sj.querySelector('p');
+                if (sjTitle) sjTitle.innerText = t.route_sjc;
+                if (sjDesc) sjDesc.innerText = t.route_sjc_desc;
+            }
             const mn = document.querySelector('#opt-manual');
-            if (mn) { mn.querySelector('h3').innerText = t.route_manual; mn.querySelector('p').innerText = t.route_manual_desc; }
+            if (mn) {
+                const mnTitle = mn.querySelector('h3');
+                const mnDesc = mn.querySelector('p');
+                if (mnTitle) mnTitle.innerText = t.route_manual;
+                if (mnDesc) mnDesc.innerText = t.route_manual_desc;
+            }
 
             // Landing: Título
             const rtTitle = document.querySelector('.input-group').nextElementSibling;
@@ -1333,8 +1354,10 @@
             document.getElementById('map-view').style.opacity = 0;
             document.getElementById('map-view').classList.add('hidden');
             document.getElementById('ar-view').classList.add('visible');
-            document.getElementById('ar-instr').innerText = TXT[app.lang].calculating;
-            document.getElementById('ar-next').innerText = "-- m";
+
+            document.getElementById('ar-instr').innerText = TXT[app.lang].inst.s; // "Sigue recto" o "Go straight" initially
+            document.getElementById('ar-next-dist').innerText = document.getElementById('txt-dist').innerText;
+            document.getElementById('ar-next-time').innerText = document.getElementById('txt-time').innerText;
 
             const name = document.getElementById('user-name').value || "";
             app.navStartTime = Date.now();
@@ -1407,24 +1430,22 @@
                         app.miniMap.fitBounds(mb, { padding: 40, animate: false });
                     }
 
-                    if (app.mode === 'manual') {
-                        const el = document.createElement('div');
-                        el.style.width = '16px'; el.style.height = '16px';
-                        el.style.backgroundColor = '#00F3FF';
-                        el.style.borderRadius = '50%';
-                        el.style.border = '3px solid white';
-                        el.style.boxShadow = '0 0 15px #00F3FF';
-                        app.arMiniMarker = new mapboxgl.Marker(el).setLngLat(app.miniMap.getCenter()).addTo(app.miniMap);
-                    } else {
-                        app.arMiniMarker = null;
-                    }
+                    // En ambos modos necesitamos el puntito azul de navegación para nosotros
+                    const el = document.createElement('div');
+                    el.style.width = '16px'; el.style.height = '16px';
+                    el.style.backgroundColor = '#00F3FF';
+                    el.style.borderRadius = '50%';
+                    el.style.border = '3px solid white';
+                    el.style.boxShadow = '0 0 15px #00F3FF';
+                    app.arMiniMarker = new mapboxgl.Marker(el).setLngLat(app.miniMap.getCenter()).addTo(app.miniMap);
                 }
             });
         }
 
         window.stopAR = () => {
             document.getElementById('ar-instr').innerText = TXT[app.lang].closing;
-            document.getElementById('ar-next').innerText = "-- m";
+            document.getElementById('ar-next-dist').innerText = "--";
+            document.getElementById('ar-next-time').innerText = "--";
 
             fullCleanup();
 
@@ -1517,8 +1538,13 @@
                 }
             }
 
-            if (app.miniMap && !userInteractingWithMiniMap && app.mode === 'manual') {
+            if (app.miniMap && !userInteractingWithMiniMap) {
                 app.miniMap.setCenter([lng, lat]);
+                if (app.mode !== 'manual') {
+                    // Como en Google Maps, hacemos 'zoom in' ajustado si seguimos la ruta
+                    // Opcionalmente, podemos dejar que la cámara siga el recorrido con una orientación estática 'hacia el norte', muy limpio.
+                    app.miniMap.zoomTo(16, { duration: 1000 });
+                }
             }
             if (app.arMiniMarker) {
                 app.arMiniMarker.setLngLat([lng, lat]);
@@ -1533,7 +1559,8 @@
             const timeStr = formatTime(remainingTimeSec);
             const km = (remainingDist / 1000).toFixed(1);
 
-            document.getElementById('ar-next').innerText = `${km} km · ${timeStr}`;
+            document.getElementById('ar-next-dist').innerText = `${km} km`;
+            document.getElementById('ar-next-time').innerText = timeStr;
 
             const targetBearing = bearing(lat, lng, target[1], target[0]);
             app.targetHeading = targetBearing;
@@ -1576,10 +1603,6 @@
 
             const arrow = document.getElementById('ar-arrow');
             if (arrow) arrow.style.transform = `rotate(${app.currentVisualHeading}deg)`;
-
-            if (app.miniMap && !userInteractingWithMiniMap) {
-                app.miniMap.setBearing(app.compassOffset);
-            }
 
             requestAnimationFrame(renderLoop);
         }
