@@ -154,7 +154,7 @@
 
         /* === PERSONALIZATION === */
         .input-group {
-            margin-bottom: 25px;
+            S margin-bottom: 25px;
             background: rgba(255, 255, 255, 0.03);
             padding: 15px;
             border-radius: 20px;
@@ -1070,92 +1070,101 @@
         }
 
         function updateUIForLang() {
-            const t = TXT[app.lang];
+            try {
+                const t = TXT[app.lang];
 
-            // Textos de inputs
-            document.getElementById('lbl-name').innerText = t.lbl;
-            document.getElementById('search-input').placeholder = t.search;
+                // Textos de inputs
+                const lblName = document.getElementById('lbl-name');
+                if (lblName) lblName.innerText = t.lbl;
 
-            // Botones principales
-            const btnConfirm = document.getElementById('btn-confirm');
-            if (btnConfirm) btnConfirm.innerText = t.btn;
-            const btnGo = document.getElementById('btn-go');
-            if (btnGo) btnGo.innerText = t.go;
+                const searchInput = document.getElementById('search-input');
+                if (searchInput) searchInput.placeholder = t.search;
 
-            // Landing: Rutas
-            const lp = document.querySelector('#opt-lapaz');
-            if (lp) {
-                const lpTitle = lp.querySelector('h3');
-                const lpDesc = lp.querySelector('p');
-                if (lpTitle) lpTitle.innerText = t.route_lapaz;
-                if (lpDesc) lpDesc.innerText = t.route_lapaz_desc;
-            }
-            const sj = document.querySelector('#opt-sjc');
-            if (sj) {
-                const sjTitle = sj.querySelector('h3');
-                const sjDesc = sj.querySelector('p');
-                if (sjTitle) sjTitle.innerText = t.route_sjc;
-                if (sjDesc) sjDesc.innerText = t.route_sjc_desc;
-            }
-            const mn = document.querySelector('#opt-manual');
-            if (mn) {
-                const mnTitle = mn.querySelector('h3');
-                const mnDesc = mn.querySelector('p');
-                if (mnTitle) mnTitle.innerText = t.route_manual;
-                if (mnDesc) mnDesc.innerText = t.route_manual_desc;
-            }
+                // Botones principales
+                const btnConfirm = document.getElementById('btn-confirm');
+                if (btnConfirm) btnConfirm.innerText = t.btn;
+                const btnGo = document.getElementById('btn-go');
+                if (btnGo) btnGo.innerText = t.go;
 
-            // Landing: Título
-            const rtTitle = document.querySelector('.input-group').nextElementSibling;
-            if (rtTitle) rtTitle.innerText = t.select_route;
+                // Landing: Rutas
+                const lp = document.querySelector('#opt-lapaz');
+                if (lp) {
+                    const lpTitle = lp.querySelector('h3');
+                    const lpDesc = lp.querySelector('p');
+                    if (lpTitle) lpTitle.innerText = t.route_lapaz;
+                    if (lpDesc) lpDesc.innerText = t.route_lapaz_desc;
+                }
+                const sj = document.querySelector('#opt-sjc');
+                if (sj) {
+                    const sjTitle = sj.querySelector('h3');
+                    const sjDesc = sj.querySelector('p');
+                    if (sjTitle) sjTitle.innerText = t.route_sjc;
+                    if (sjDesc) sjDesc.innerText = t.route_sjc_desc;
+                }
+                const mn = document.querySelector('#opt-manual');
+                if (mn) {
+                    const mnTitle = mn.querySelector('h3');
+                    const mnDesc = mn.querySelector('p');
+                    if (mnTitle) mnTitle.innerText = t.route_manual;
+                    if (mnDesc) mnDesc.innerText = t.route_manual_desc;
+                }
 
-            // Mapa: Destino y Tip
-            if (app.mode === 'default') {
-                const destName = document.getElementById('txt-dest-name');
-                if (destName) destName.innerText = t.dest;
-            } else if (app.mode === 'manual') {
-                const tip = document.getElementById('manual-tip');
-                if (tip) {
-                    if (tip.innerText === TXT['es'].locating || tip.innerText === TXT['en'].locating) {
-                        tip.innerText = t.locating;
-                    } else {
-                        tip.innerText = t.manualTip;
+                // Landing: Título
+                const inputGroup = document.querySelector('.input-group');
+                if (inputGroup && inputGroup.nextElementSibling) {
+                    inputGroup.nextElementSibling.innerText = t.select_route;
+                }
+
+                // Mapa: Destino y Tip
+                if (app.mode === 'default') {
+                    const destName = document.getElementById('txt-dest-name');
+                    if (destName) destName.innerText = t.dest;
+                } else if (app.mode === 'manual') {
+                    const tip = document.getElementById('manual-tip');
+                    if (tip) {
+                        if (tip.innerText === TXT['es'].locating || tip.innerText === TXT['en'].locating) {
+                            tip.innerText = t.locating;
+                        } else {
+                            tip.innerText = t.manualTip;
+                        }
                     }
                 }
-            }
 
-            // Etiquetas de Bottom Card
-            const bc = document.querySelector('.bottom-card');
-            if (bc) {
-                const bcDivs = bc.querySelectorAll('div > div:first-child > div:first-child');
-                if (bcDivs.length > 0) bcDivs[0].innerText = t.destination;
-            }
-
-            // Onboarding 
-            const ob = document.getElementById('onboarding-tip');
-            if (ob) {
-                const obH2 = ob.querySelector('h2');
-                if (obH2) obH2.innerText = t.ob_title;
-                const obP = ob.querySelector('p');
-                if (obP) obP.innerText = t.ob_desc;
-                const obBtn = ob.querySelector('button');
-                if (obBtn) obBtn.innerText = t.ob_btn;
-            }
-
-            // Summary screen
-            const ss = document.getElementById('summary-screen');
-            if (ss) {
-                const ssH1 = ss.querySelector('h1');
-                if (ssH1) ssH1.innerText = t.sum_title;
-                const ssP = ss.querySelector('p');
-                if (ssP) ssP.innerText = t.sum_desc;
-                const ssBtn = ss.querySelector('button');
-                if (ssBtn) ssBtn.innerText = t.sum_btn;
-                const stats = ss.querySelectorAll('.summary-stat');
-                if (stats.length === 2) {
-                    stats[0].previousElementSibling.innerText = t.distance;
-                    stats[1].previousElementSibling.innerText = t.time;
+                // Etiquetas de Bottom Card
+                const bc = document.querySelector('.bottom-card');
+                if (bc) {
+                    const bcDivs = bc.querySelectorAll('div > div:first-child > div:first-child');
+                    if (bcDivs.length > 0) bcDivs[0].innerText = t.destination;
                 }
+
+                // Onboarding 
+                const ob = document.getElementById('onboarding-tip');
+                if (ob) {
+                    const obH2 = ob.querySelector('h2');
+                    if (obH2) obH2.innerText = t.ob_title;
+                    const obP = ob.querySelector('p');
+                    if (obP) obP.innerText = t.ob_desc;
+                    const obBtn = ob.querySelector('button');
+                    if (obBtn) obBtn.innerText = t.ob_btn;
+                }
+
+                // Summary screen
+                const ss = document.getElementById('summary-screen');
+                if (ss) {
+                    const ssH1 = ss.querySelector('h1');
+                    if (ssH1) ssH1.innerText = t.sum_title;
+                    const ssP = ss.querySelector('p');
+                    if (ssP) ssP.innerText = t.sum_desc;
+                    const ssBtn = ss.querySelector('button');
+                    if (ssBtn) ssBtn.innerText = t.sum_btn;
+                    const stats = ss.querySelectorAll('.summary-stat');
+                    if (stats.length === 2) {
+                        if (stats[0].previousElementSibling) stats[0].previousElementSibling.innerText = t.distance;
+                        if (stats[1].previousElementSibling) stats[1].previousElementSibling.innerText = t.time;
+                    }
+                }
+            } catch (err) {
+                console.error("Error in updateUIForLang:", err);
             }
         }
 
@@ -1247,7 +1256,9 @@
 
             // Crear Objeto Route Compatible con App
             const totalDist = calcTotalDist(coordinates);
-            const totalTime = (totalDist / 11.11);
+            let speedMS = 11.11; // 40 km/h original
+            if (app.selectedRouteType === 'sjc') speedMS = 22.22; // ~80 km/h for San Jose Route
+            const totalTime = (totalDist / speedMS);
 
             app.route = {
                 distance: totalDist,
@@ -1555,7 +1566,9 @@
                 remainingDist += dist(steps[i][1], steps[i][0], steps[i + 1][1], steps[i + 1][0]);
             }
 
-            const remainingTimeSec = remainingDist / 11.11;
+            let speedMS = 11.11;
+            if (app.selectedRouteType === 'sjc') speedMS = 22.22;
+            const remainingTimeSec = remainingDist / speedMS;
             const timeStr = formatTime(remainingTimeSec);
             const km = (remainingDist / 1000).toFixed(1);
 
