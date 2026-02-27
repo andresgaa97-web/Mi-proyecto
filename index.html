@@ -425,9 +425,34 @@
             touch-action: manipulation;
         }
 
-        .suggestion-item::before {
-            content: "📍";
-            font-size: 16px;
+        .suggestion-item-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            width: 24px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .suggestion-item-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow: hidden;
+        }
+
+        .suggestion-main-name {
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .suggestion-sub-name {
+            font-size: 12px;
+            opacity: 0.6;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .suggestion-item:last-child {
@@ -705,6 +730,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
+            pointer-events: auto;
         }
 
         .nav-arrive-banner {
@@ -1169,32 +1195,71 @@
             document.getElementById('search-container').style.display = (app.mode === 'manual') ? 'flex' : 'none';
         }
 
-        // --- BÚSQUEDA INTELIGENTE MEJORADA CON TIPOS DE LUGARES ---
+        // --- BÚSQUEDA PROFESIONAL (API SEARCHBOX V1) ---
         async function handleSearchInput(query) {
             const suggestionsBox = document.getElementById('search-suggestions');
-            if (!query || query.length < 3) { suggestionsBox.style.display = 'none'; return; }
+            if (!query || query.length < 3) {
+                suggestionsBox.style.display = 'none';
+                return;
+            }
 
-            // Agregamos types=address,poi,place para buscar calles, negocios y colonias
+            // Inicializamos token de sesión si no existe (gestión eficiente de Mapbox)
+            if (!app.searchSessionToken) {
+                app.searchSessionToken = Math.random().toString(36).substring(2, 12);
+            }
+
             const center = map.getCenter();
-            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&autocomplete=true&limit=6&types=address,poi,place,locality,neighborhood&proximity=${center.lng},${center.lat}&language=${app.lang}`;
+            // SearchBox API entiende lenguaje natural y prioriza aeropuertos/POIs sobre direcciones genéricas
+            const url = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(query)}&access_token=${mapboxgl.accessToken}&session_token=${app.searchSessionToken}&language=${app.lang}&limit=10&proximity=${center.lng},${center.lat}&country=mx&types=poi,address,place`;
 
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 suggestionsBox.innerHTML = '';
-                if (data.features.length > 0) {
-                    data.features.forEach(feature => {
+
+                if (data.suggestions && data.suggestions.length > 0) {
+                    data.suggestions.forEach(s => {
                         const div = document.createElement('div');
                         div.className = 'suggestion-item';
-                        div.innerText = feature.place_name;
-                        div.onclick = () => selectSuggestion(feature.geometry.coordinates[0], feature.geometry.coordinates[1], feature.place_name);
+
+                        let icon = "📍";
+                        const nameLower = s.name.toLowerCase();
+                        if (nameLower.includes('aeropuerto') || nameLower.includes('airport')) icon = "✈️";
+                        else if (s.feature_type === 'poi') icon = "🏢";
+                        else if (s.feature_type === 'address') icon = "🏠";
+                        else if (s.feature_type === 'place') icon = "🏙️";
+
+                        div.innerHTML = `
+                            <div class="suggestion-item-icon">${icon}</div>
+                            <div class="suggestion-item-text">
+                                <span class="suggestion-main-name">${s.name}</span>
+                                <span class="suggestion-sub-name">${s.full_address || s.place_formatted || ''}</span>
+                            </div>
+                        `;
+                        // Obtenemos coordenadas reales vía mapbox_id al seleccionar
+                        div.onclick = () => selectSearchBoxSuggestion(s.mapbox_id, s.name);
                         suggestionsBox.appendChild(div);
                     });
                     suggestionsBox.style.display = 'block';
                 } else {
                     suggestionsBox.style.display = 'none';
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Search error:", e); }
+        }
+
+        async function selectSearchBoxSuggestion(id, name) {
+            const url = `https://api.mapbox.com/search/searchbox/v1/retrieve/${id}?access_token=${mapboxgl.accessToken}&session_token=${app.searchSessionToken}`;
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.features && data.features.length > 0) {
+                    const feat = data.features[0];
+                    const coords = feat.geometry.coordinates;
+                    selectSuggestion(coords[0], coords[1], name);
+                    // Renovamos token para la próxima búsqueda
+                    app.searchSessionToken = Math.random().toString(36).substring(2, 12);
+                }
+            } catch (e) { console.error("Retrieve error:", e); }
         }
 
         function selectSuggestion(lng, lat, placeName) {
@@ -1274,7 +1339,7 @@
             if (app.wakeLock) { app.wakeLock.release().catch(() => { }); app.wakeLock = null; }
         }
 
-        function forceStopAndShowLanding() {
+        window.forceStopAndShowLanding = function () {
             fullCleanup();
             const mmc = document.getElementById('mini-map-container');
             if (mmc) { mmc.style.top = ''; mmc.style.left = '5%'; mmc.style.bottom = '30px'; mmc.style.right = ''; }
@@ -1590,7 +1655,9 @@
             else if (e.alpha) app.compassOffset = 360 - e.alpha;
         }
 
-        function stopAR() { forceStopAndShowLanding(); }
+        window.stopAR = function () {
+            forceStopAndShowLanding();
+        };
 
         let userInteractingWithMiniMap = false;
         function initMiniMap() {
