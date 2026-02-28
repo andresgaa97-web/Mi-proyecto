@@ -6,7 +6,7 @@
     <!-- Viewport optimizado para todos los móviles -->
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
-    <title>BajaStay Rentals - AR Virtual Traveling</title>
+    <title>BajaStay Rentals</title>
     <meta name="description"
         content="Navegación GPS estilo Google Maps desde el aeropuerto hasta BajaStay Rentals en La Paz y Los Cabos, Baja California Sur.">
 
@@ -1195,49 +1195,47 @@
             document.getElementById('search-container').style.display = (app.mode === 'manual') ? 'flex' : 'none';
         }
 
-        // --- BÚSQUEDA PROFESIONAL (API SEARCHBOX V1) ---
+        // --- BÚSQUEDA DE ALTA PRECISIÓN (GEOCODING V5) ---
         async function handleSearchInput(query) {
             const suggestionsBox = document.getElementById('search-suggestions');
-            if (!query || query.length < 3) {
+            if (!query || query.length < 2) {
                 suggestionsBox.style.display = 'none';
                 return;
             }
 
-            // Inicializamos token de sesión si no existe (gestión eficiente de Mapbox)
-            if (!app.searchSessionToken) {
-                app.searchSessionToken = Math.random().toString(36).substring(2, 12);
-            }
-
             const center = map.getCenter();
-            // SearchBox API entiende lenguaje natural y prioriza aeropuertos/POIs sobre direcciones genéricas
-            const url = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(query)}&access_token=${mapboxgl.accessToken}&session_token=${app.searchSessionToken}&language=${app.lang}&limit=10&proximity=${center.lng},${center.lat}&country=mx&types=poi,address,place`;
+            // Usamos Geocoding v5 con fuzzyMatch para encontrar direcciones exactas y calles residenciales
+            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&autocomplete=true&fuzzyMatch=true&limit=10&proximity=${center.lng},${center.lat}&country=mx&types=address,poi,place,neighborhood,locality&language=${app.lang}`;
 
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 suggestionsBox.innerHTML = '';
 
-                if (data.suggestions && data.suggestions.length > 0) {
-                    data.suggestions.forEach(s => {
+                if (data.features && data.features.length > 0) {
+                    data.features.forEach(f => {
                         const div = document.createElement('div');
                         div.className = 'suggestion-item';
 
                         let icon = "📍";
-                        const nameLower = s.name.toLowerCase();
+                        const nameLower = f.place_name.toLowerCase();
                         if (nameLower.includes('aeropuerto') || nameLower.includes('airport')) icon = "✈️";
-                        else if (s.feature_type === 'poi') icon = "🏢";
-                        else if (s.feature_type === 'address') icon = "🏠";
-                        else if (s.feature_type === 'place') icon = "🏙️";
+                        else if (f.place_type.includes('poi')) icon = "🏢";
+                        else if (f.place_type.includes('address')) icon = "🏠";
+
+                        // Mostramos el nombre principal (ej: Chunique 3025) y debajo el resto de la dirección completa
+                        const mainName = f.text || f.place_name.split(',')[0];
+                        const fullAddress = f.place_name;
+                        const subName = fullAddress.includes(',') ? fullAddress.substring(fullAddress.indexOf(',') + 1).trim() : '';
 
                         div.innerHTML = `
                             <div class="suggestion-item-icon">${icon}</div>
                             <div class="suggestion-item-text">
-                                <span class="suggestion-main-name">${s.name}</span>
-                                <span class="suggestion-sub-name">${s.full_address || s.place_formatted || ''}</span>
+                                <span class="suggestion-main-name">${mainName}</span>
+                                <span class="suggestion-sub-name">${subName}</span>
                             </div>
                         `;
-                        // Obtenemos coordenadas reales vía mapbox_id al seleccionar
-                        div.onclick = () => selectSearchBoxSuggestion(s.mapbox_id, s.name);
+                        div.onclick = () => selectSuggestion(f.geometry.coordinates[0], f.geometry.coordinates[1], f.place_name);
                         suggestionsBox.appendChild(div);
                     });
                     suggestionsBox.style.display = 'block';
@@ -1247,25 +1245,11 @@
             } catch (e) { console.error("Search error:", e); }
         }
 
-        async function selectSearchBoxSuggestion(id, name) {
-            const url = `https://api.mapbox.com/search/searchbox/v1/retrieve/${id}?access_token=${mapboxgl.accessToken}&session_token=${app.searchSessionToken}`;
-            try {
-                const res = await fetch(url);
-                const data = await res.json();
-                if (data.features && data.features.length > 0) {
-                    const feat = data.features[0];
-                    const coords = feat.geometry.coordinates;
-                    selectSuggestion(coords[0], coords[1], name);
-                    // Renovamos token para la próxima búsqueda
-                    app.searchSessionToken = Math.random().toString(36).substring(2, 12);
-                }
-            } catch (e) { console.error("Retrieve error:", e); }
-        }
-
         function selectSuggestion(lng, lat, placeName) {
             document.getElementById('search-input').value = placeName;
             document.getElementById('search-suggestions').style.display = 'none';
-            document.getElementById('txt-dest-name').innerText = placeName.split(',')[0]; // Muestra el nombre corto
+            // Mostramos el nombre completo o al menos más descriptivo en la tarjeta
+            document.getElementById('txt-dest-name').innerText = placeName.length > 25 ? placeName.substring(0, 25) + "..." : placeName;
             document.getElementById('manual-tip').innerText = TXT[app.lang].locating;
 
             if (navigator.geolocation) {
@@ -1329,6 +1313,15 @@
             app.markers = [];
             app.route = null;
             app.step = 0;
+
+            // RESET DE BÚSQUEDA MANUAL
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) searchInput.value = '';
+            const destName = document.getElementById('txt-dest-name');
+            if (destName) destName.innerText = '...';
+            const goBtn = document.getElementById('btn-go');
+            if (goBtn) goBtn.disabled = true;
+
             document.getElementById('summary-screen').style.display = 'none';
             if (app.navMap) { app.navMap.remove(); app.navMap = null; }
             app.navUserMarker = null;
